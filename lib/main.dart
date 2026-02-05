@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'features/schedule/presentation/pages/pages/schedule_page.dart';
+import 'features/navigation/presentation/pages/main_screen.dart';
 
-void main() => runApp(const UniHelperApp());
+void universityHelper() {
+  runApp(const UniHelperApp());
+}
+
+// Якщо ваша точка входу називається main, використовуйте її:
+void main() {
+  runApp(const UniHelperApp());
+}
 
 class UniHelperApp extends StatelessWidget {
   const UniHelperApp({super.key});
@@ -9,15 +16,20 @@ class UniHelperApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'UniHelper',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF7F9F7),
-        primaryColor: const Color(0xFF2D5A40),
+        // Основний колір проєкту #2D5A40
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF2D5A40),
+          primary: const Color(0xFF2D5A40),
+        ),
+        useMaterial3: true,
+        // Налаштування шрифтів та загального стилю
+        scaffoldBackgroundColor: const Color(0xFFF5F5F5), // Світлий фон для Soft UI
       ),
-      // Тепер головний екран викликається з окремого файлу
-      home: const SchedulePage(),
+      // Встановлюємо MainScreen як головну точку входу
+      home: const MainScreen(),
     );
   }
 }
