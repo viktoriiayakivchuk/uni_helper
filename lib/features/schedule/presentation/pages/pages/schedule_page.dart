@@ -24,18 +24,18 @@ class SchedulePage extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(20, 100, 20, 20),
         child: Column(
           children: [
             // Тут будуть ваші віджети перемикача та календаря
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             LessonCard(
               title: "Процедурне програмування",
               time: "9:00 – 10:30",
               type: "Лекція",
               teacher: "Віктор Іванченко",
-              themeColor: const Color(0xFF2D5A40),
+              themeColor: Color(0xFF2D5A40),
             ),
             // Додайте інші картки...
           ],
