@@ -1,8 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-// Виправлений шлях імпорту (виходимо на 3 рівні вгору до папки features)
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
-
+import '../../../glossary/presentation/pages/glossary_page.dart';
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -17,7 +16,7 @@ class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _pages = [
     SchedulePage(), // Вимога №2
     Center(child: Text('Карта (Заглушка)')), // Вимога №1
-    Center(child: Text('Словничок')), // Вимога №3
+    GlossaryPage(), // Вимога №3
     Center(child: Text('Профіль')),
   ];
 
