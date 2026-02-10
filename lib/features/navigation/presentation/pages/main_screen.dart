@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import '../../../../screens/social_life_screen.dart';
-import '../../../../screens/useful_contacts_screen.dart';
+import '../../../contacts/presentation/pages/contacts_page.dart'; // Оновлений імпорт
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,12 +16,12 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Оновлений список головних сторінок
+  // Список головних сторінок (пункти 1, 2, 7, 8 ТЗ)
   static final List<Widget> _pages = [
-    const SchedulePage(), // Розклад
-    const Center(child: Text('Чат-бот UniHelper\n(Ставимо запитання тут)', textAlign: TextAlign.center)), 
-    const GlossaryPage(), // Словник
-    const Center(child: Text('Профіль студента\n(Тут буде авторизація)', textAlign: TextAlign.center)),
+    const SchedulePage(), // Розклад [cite: 4]
+    const Center(child: Text('Чат-бот UniHelper\n(Ставимо запитання тут)', textAlign: TextAlign.center)), // [cite: 120]
+    const GlossaryPage(), // Словник [cite: 32]
+    const Center(child: Text('Профіль студента\n(Тут буде авторизація)', textAlign: TextAlign.center)), // [cite: 133]
   ];
 
   void _onItemTapped(int index) {
@@ -35,7 +35,6 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       key: _scaffoldKey,
       extendBody: true,
-      // Бічна панель (Drawer) для додаткових розділів
       drawer: _buildSoftUIDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -64,7 +63,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Бічне меню (Drawer)
   Widget _buildSoftUIDrawer() {
     return Drawer(
       backgroundColor: const Color(0xFFF0F4F1),
@@ -90,30 +88,24 @@ class _MainScreenState extends State<MainScreen> {
           ),
           _drawerItem(Icons.map_outlined, 'Карта університету', () {
              Navigator.pop(context);
-             // Тут буде карта
           }),
-          
-          // РОЗДІЛЕНО: Соціальне життя (Вимога 6)
           _drawerItem(Icons.celebration_outlined, 'Соціальне життя', () {
             Navigator.pop(context);
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SocialLifeScreen()),
+              MaterialPageRoute(builder: (context) => const SocialLifeScreen()), // [cite: 95]
             );
           }),
-          
-          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)),
-          _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
-          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () => Navigator.pop(context)),
+          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)), // [cite: 65]
+          _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)), // [cite: 37]
+          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () => Navigator.pop(context)), // [cite: 151]
           const Divider(),
-          _drawerItem(Icons.link, 'Офіційні ресурси', () => Navigator.pop(context)),
-          
-          // РОЗДІЛЕНО: Корисні контакти (Вимога 7)
+          _drawerItem(Icons.link, 'Офіційні ресурси', () => Navigator.pop(context)), // [cite: 125]
           _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
             Navigator.pop(context);
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const UsefulContactsScreen()),
+              MaterialPageRoute(builder: (context) => const ContactsPage()), // ТУТ ТЕПЕР ПРАВИЛЬНА СТОРІНКА [cite: 104]
             );
           }),
         ],
@@ -121,7 +113,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Оновлений метод з параметром onTap
   Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF2D5A40)),
@@ -129,7 +120,7 @@ class _MainScreenState extends State<MainScreen> {
       onTap: onTap,
     );
   }
-  // Нижня панель навігації (відновлюємо втрачений метод)
+
   Widget _buildBottomNavigationBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
