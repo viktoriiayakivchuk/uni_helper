@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
+import '../../../../screens/social_life_screen.dart';
+import '../../../../screens/useful_contacts_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -62,7 +64,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // Бічне меню (Drawer) - перенесли сюди Карту та Соц. життя
+  // Бічне меню (Drawer)
   Widget _buildSoftUIDrawer() {
     return Drawer(
       backgroundColor: const Color(0xFFF0F4F1),
@@ -86,31 +88,48 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
           ),
-          _drawerItem(Icons.map_outlined, 'Карта університету'),
-          _drawerItem(Icons.celebration_outlined, 'Соціальне життя'),
-          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації'),
-          _drawerItem(Icons.description_outlined, 'Путівник по документах'),
-          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація'),
+          _drawerItem(Icons.map_outlined, 'Карта університету', () {
+             Navigator.pop(context);
+             // Тут буде карта
+          }),
+          
+          // РОЗДІЛЕНО: Соціальне життя (Вимога 6)
+          _drawerItem(Icons.celebration_outlined, 'Соціальне життя', () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SocialLifeScreen()),
+            );
+          }),
+          
+          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)),
+          _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
+          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () => Navigator.pop(context)),
           const Divider(),
-          _drawerItem(Icons.link, 'Офіційні ресурси'),
-          _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти'),
+          _drawerItem(Icons.link, 'Офіційні ресурси', () => Navigator.pop(context)),
+          
+          // РОЗДІЛЕНО: Корисні контакти (Вимога 7)
+          _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
+            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const UsefulContactsScreen()),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _drawerItem(IconData icon, String title) {
+  // Оновлений метод з параметром onTap
+  Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF2D5A40)),
       title: Text(title, style: const TextStyle(color: Color(0xFF2D5A40))),
-      onTap: () {
-        Navigator.pop(context);
-        // Тут буде логіка переходу на відповідні сторінки
-      },
+      onTap: onTap,
     );
   }
-
-  // Нижня панель навігації (замість Життя -> Профіль, замість Карти -> Бот)
+  // Нижня панель навігації (відновлюємо втрачений метод)
   Widget _buildBottomNavigationBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
