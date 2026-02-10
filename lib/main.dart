@@ -1,26 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; 
+import 'package:flutter/foundation.dart'; // Додано для debugPrint
 import 'firebase_options.dart'; 
 import 'features/navigation/presentation/pages/main_screen.dart';
+
+// Імпорти твоїх сидерів
 import 'package:uni_helper/features/glossary/data/glossary_seeder.dart';
+import 'package:uni_helper/features/contacts/data/contacts_seeder.dart'; // Наш новий сидер
 
 void main() async {
   // 1. Обов'язково ініціалізуємо зв'язок із нативною частиною
   WidgetsFlutterBinding.ensureInitialized();
   
   try {
-    // 2. Встановлюємо тайм-аут для ініціалізації, щоб не чекати вічно
+    // 2. Ініціалізація Firebase
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 10));
     
-    print("Firebase ініціалізовано успішно!");
+    debugPrint("Firebase ініціалізовано успішно!");
+
+    // 3. НАПОВНЕННЯ БАЗИ ДАНИХ (SEEDING)
+    // Розкоментуй ці рядки, запусти додаток один раз, і закоментуй назад.
+    
+    //await GlossarySeeder.seedDatabase(); 
+    //await ContactsSeeder.seed(); // Виклик завантаження контактів у Firestore [cite: 112]
+
   } catch (e) {
-    // Якщо Firebase не зміг завантажитись, ми все одно запускаємо додаток,
-    // але виводимо помилку в консоль
-    print("Помилка ініціалізації Firebase: $e");
+    // Використовуємо debugPrint замість print для чистоти коду
+    debugPrint("Помилка ініціалізації Firebase: $e");
   }
-  //await GlossarySeeder.seedDatabase();
 
   runApp(const UniHelperApp());
 }
@@ -41,7 +50,7 @@ class UniHelperApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFF5F5F5),
       ),
-      home: const MainScreen(),
+      home: const MainScreen(), // Головний екран навігації [cite: 149]
     );
   }
-} 
+}
