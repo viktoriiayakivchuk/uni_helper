@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// Твої існуючі імпорти (залишаємо без змін)
+// Твої існуючі імпорти
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import '../../../../screens/social_life_screen.dart';
 import '../../../contacts/presentation/pages/contacts_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/complete_profile_page.dart';
+import '../../../resources/presentation/pages/resources_page.dart'; 
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -59,14 +60,12 @@ class _MainScreenState extends State<MainScreen> {
           return CompleteProfilePage(onSaved: () => setState(() {}));
         }
 
-        // Повертаємо стилізований профіль
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
               const SizedBox(height: 40),
-              // Головна картка студента (Glassmorphism)
               ClipRRect(
                 borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
@@ -101,7 +100,7 @@ class _MainScreenState extends State<MainScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _buildMiniStat("КУРС", data['course'] ?? "-"),
+                            _buildMiniStat("КУРС", data['course']?.toString() ?? "-"),
                             _buildMiniStat("ГРУПА", data['group'] ?? "-"),
                           ],
                         ),
@@ -111,12 +110,10 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Картка факультету
               _buildSimpleInfoCard(Icons.account_balance_rounded, "Факультет", data['faculty']),
               const SizedBox(height: 30),
-              // Кнопка виходу
               _buildLogoutButton(),
-              const SizedBox(height: 120), // Відступ від BottomNav
+              const SizedBox(height: 120),
             ],
           ),
         );
@@ -179,7 +176,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      extendBody: true, // Контент заходить під прозорий BottomNav
+      extendBody: true,
       drawer: _buildSoftUIDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -202,7 +199,6 @@ class _MainScreenState extends State<MainScreen> {
       ),
       body: Stack(
         children: [
-          // Глобальний фон для всього екрану
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -222,7 +218,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // --- DRAWER (Твій оригінальний стиль, трохи підправлений під кольори) ---
   Widget _buildSoftUIDrawer() {
     return Drawer(
       backgroundColor: const Color(0xFFF0F4F1),
@@ -249,7 +244,11 @@ class _MainScreenState extends State<MainScreen> {
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
           _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () => Navigator.pop(context)),
           const Divider(),
-          _drawerItem(Icons.link, 'Офіційні ресурси', () => Navigator.pop(context)),
+          // ОНОВЛЕНО: Перехід на сторінку ресурсів (п. 147 ТЗ)
+          _drawerItem(Icons.link, 'Офіційні ресурси', () {
+            Navigator.pop(context);
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourcesPage()));
+          }),
           _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactsPage()));
@@ -284,7 +283,7 @@ class _MainScreenState extends State<MainScreen> {
             child: BottomNavigationBar(
               currentIndex: _selectedIndex,
               onTap: _onItemTapped,
-              backgroundColor: Colors.white.withOpacity(0.3), // Прозорість для ефекту скла
+              backgroundColor: Colors.white.withOpacity(0.3),
               selectedItemColor: const Color(0xFF2D5A40),
               unselectedItemColor: Colors.black38,
               elevation: 0,
