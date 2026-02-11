@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
-import '../../../../screens/social_life_screen.dart';
+import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
 import '../../../contacts/presentation/pages/contacts_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/complete_profile_page.dart';
@@ -24,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // Основні вкладки BottomNavigationBar
   List<Widget> get _pages => [
         const SchedulePage(),
         const Center(
@@ -261,10 +262,13 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
           _drawerItem(Icons.map_outlined, 'Карта університету', () => Navigator.pop(context)),
+          
+          // ОНОВЛЕНО: Перехід на нову сторінку соціального життя
           _drawerItem(Icons.celebration_outlined, 'Соціальне життя', () {
             Navigator.pop(context);
-            Navigator.push(context, MaterialPageRoute(builder: (context) => const SocialLifeScreen()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SocialLifePage()));
           }),
+          
           _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)),
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
           _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
