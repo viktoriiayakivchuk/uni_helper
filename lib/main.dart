@@ -3,10 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'; // Додано для debugPrint
 import 'firebase_options.dart'; 
 import 'features/navigation/presentation/pages/main_screen.dart';
-
-// Імпорти твоїх сидерів
-import 'package:uni_helper/features/glossary/data/glossary_seeder.dart';
-import 'package:uni_helper/features/contacts/data/contacts_seeder.dart'; // Наш новий сидер
+//import 'package:uni_helper/features/glossary/data/glossary_seeder.dart';
+//import 'package:uni_helper/features/contacts/data/contacts_seeder.dart'; // Наш новий сидер
 
 void main() async {
   // 1. Обов'язково ініціалізуємо зв'язок із нативною частиною
