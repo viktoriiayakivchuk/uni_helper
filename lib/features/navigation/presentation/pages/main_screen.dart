@@ -2,8 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Твої існуючі імпорти
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import '../../../../screens/social_life_screen.dart';
@@ -11,6 +9,8 @@ import '../../../contacts/presentation/pages/contacts_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/complete_profile_page.dart';
 import '../../../resources/presentation/pages/resources_page.dart'; 
+import '../../../support/presentation/pages/support_page.dart';
+import '../../../support/data/motivation_data.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -34,6 +34,45 @@ class _MainScreenState extends State<MainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  // --- ВІДЖЕТ: ПОРАДА ДНЯ (п. 169 ТЗ) ---
+  Widget _buildDailyQuote() {
+    final int dayOfMonth = DateTime.now().day;
+    // Вибираємо цитату за днем місяця, щоб вона змінювалась щодня (п. 167 ТЗ)
+    final String quote = MotivationData.dailyQuotes[dayOfMonth % MotivationData.dailyQuotes.length];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.format_quote_rounded, color: Color(0xFF2D5A40), size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "ПОРАДА ДНЯ",
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 1.2),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  quote,
+                  style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Color(0xFF2D5A40)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- РОЗУМНА ВКЛАДКА ПРОФІЛЮ З GLASS DESIGN ---
@@ -66,6 +105,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             children: [
               const SizedBox(height: 40),
+              // Головна картка студента
               ClipRRect(
                 borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
@@ -87,7 +127,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                         const SizedBox(height: 15),
                         Text(
-                          user.displayName ?? 'Студент ПНУ',
+                          user.displayName ?? 'Студент КНУВС',
                           textAlign: TextAlign.center,
                           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
                         ),
@@ -109,9 +149,15 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              
+              // Порада дня (інтегрована згідно з ТЗ)
+              _buildDailyQuote(),
+
+              // Картка факультету
               _buildSimpleInfoCard(Icons.account_balance_rounded, "Факультет", data['faculty']),
-              const SizedBox(height: 30),
+              const SizedBox(height: 20),
+              
+              // Кнопка виходу
               _buildLogoutButton(),
               const SizedBox(height: 120),
             ],
@@ -242,13 +288,21 @@ class _MainScreenState extends State<MainScreen> {
           }),
           _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)),
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
-          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () => Navigator.pop(context)),
+          
+          // ПЕРЕХІД: ПІДТРИМКА ТА МОТИВАЦІЯ
+          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
+            Navigator.pop(context);
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SupportPage()));
+          }),
+          
           const Divider(),
-          // ОНОВЛЕНО: Перехід на сторінку ресурсів (п. 147 ТЗ)
+          
+          // ПЕРЕХІД: ОФІЦІЙНІ РЕСУРСИ
           _drawerItem(Icons.link, 'Офіційні ресурси', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourcesPage()));
           }),
+          
           _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactsPage()));
