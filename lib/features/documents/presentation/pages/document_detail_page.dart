@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
-import 'dart:html' as html; // Спеціально для Web-завантаження
+import 'package:flutter/foundation.dart' show kIsWeb; 
+import 'dart:io'; 
+import 'package:path_provider/path_provider.dart'; 
 
 class DocumentDetailPage extends StatefulWidget {
   final Map<String, dynamic> doc;
@@ -36,25 +38,31 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  // ФУНКЦІЯ ЗАВАНТАЖЕННЯ ДЛЯ WEB
-  Future<void> _downloadPdfWeb(String assetPath, String fileName) async {
+  // Кросплатформна функція збереження
+  Future<void> _savePdf(String assetPath, String fileName) async {
     try {
       final byteData = await rootBundle.load(assetPath);
       final bytes = byteData.buffer.asUint8List();
 
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
+      if (kIsWeb) {
+        // Логіка для Web (за потреби реалізуємо через універсальний пакет)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Завантаження у браузері наразі обмежене')),
+        );
+      } else {
+        // Логіка для Mobile (Android/iOS)
+        final directory = await getApplicationDocumentsDirectory();
+        final path = "${directory.path}/$fileName.pdf";
+        final file = File(path);
+        await file.writeAsBytes(bytes);
 
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute("download", "$fileName.pdf")
-        ..click();
-
-      html.Url.revokeObjectUrl(url);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Файл завантажено у завантаження браузера')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Файл збережено у документи додатка'),
+            backgroundColor: const Color(0xFF1B3A29),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint("Помилка завантаження: $e");
     }
@@ -81,7 +89,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 25),
 
-            // КНОПКИ: ПЕРЕГЛЯД ТА ЗАВАНТАЖЕННЯ
             Row(
               children: [
                 Expanded(
@@ -104,7 +111,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download, color: Color(0xFF1B3A29)),
                     label: const Text("ЗБЕРЕГТИ"),
-                    onPressed: () => _downloadPdfWeb(
+                    onPressed: () => _savePdf(
                         widget.doc['pdfPath'], widget.doc['title']),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFF1B3A29)),
@@ -152,7 +159,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 }
 
-// Екран перегляду залишається без змін
+// ВІДЖЕТ ПЕРЕГЛЯДУ (ЯКИЙ БУВ ВІДСУТНІЙ)
 class PdfPreviewScreen extends StatefulWidget {
   final String assetPath;
   final String title;
