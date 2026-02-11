@@ -16,29 +16,90 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
   String? selectedCourse;
   String? selectedGroup;
   bool isSaving = false;
+  bool isInitialDataLoaded = false;
 
   final List<String> courses = ['1', '2', '3', '4', '1 (Маг)', '2 (Маг)'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserData();
+  }
+
+  // Завантажуємо існуючі дані профілю для редагування [cite: 140]
+  Future<void> _loadCurrentUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        setState(() {
+          selectedFaculty = data['faculty'];
+          selectedCourse = data['course']?.toString();
+          selectedGroup = data['group'];
+          isInitialDataLoaded = true;
+        });
+      } else {
+        setState(() => isInitialDataLoaded = true);
+      }
+    }
+  }
 
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null && selectedFaculty != null && selectedGroup != null) {
       setState(() => isSaving = true);
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'faculty': selectedFaculty,
-        'course': selectedCourse,
-        'group': selectedGroup,
-        'isProfileComplete': true,
-      }, SetOptions(merge: true));
-      widget.onSaved();
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'faculty': selectedFaculty,
+          'course': selectedCourse,
+          'group': selectedGroup,
+          'isProfileComplete': true,
+        }, SetOptions(merge: true));
+
+        if (mounted) {
+          // Показуємо успішне сповіщення 
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Дані успішно оновлено!'),
+              backgroundColor: Color(0xFF2D5A40),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          
+          widget.onSaved();
+          Navigator.of(context).pop(); // Повертаємось назад після успіху
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Помилка: $e'), backgroundColor: Colors.redAccent),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => isSaving = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!isInitialDataLoaded) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF2D5A40))));
+    }
+
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF2D5A40)),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
       body: Stack(
         children: [
-          // Фонове зображення або градієнт
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -48,20 +109,6 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
               ),
             ),
           ),
-          // Декоративні розмиті кола для стилю
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFF2D5A40).withOpacity(0.1),
-              ),
-            ),
-          ),
-          
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -80,31 +127,21 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.school_rounded, size: 60, color: Color(0xFF2D5A40)),
+                          const Icon(Icons.manage_accounts_rounded, size: 60, color: Color(0xFF2D5A40)),
                           const SizedBox(height: 16),
                           const Text(
-                            "Налаштування",
-                            style: TextStyle(
-                              fontSize: 24, 
-                              fontWeight: FontWeight.bold, 
-                              color: Color(0xFF2D5A40),
-                            ),
+                            "Мій профіль",
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            "Вкажіть дані для розкладу",
-                            style: TextStyle(color: Colors.black54),
-                          ),
+                          const Text("Вкажіть дані для розкладу", style: TextStyle(color: Colors.black54)),
                           const SizedBox(height: 32),
-                          
                           _buildGlassDropdown("Факультет", _facultyItems()),
                           const SizedBox(height: 20),
                           _buildGlassDropdown("Курс", _courseItems()),
                           const SizedBox(height: 20),
                           _buildGroupSection(),
-                          
                           const SizedBox(height: 40),
-                          
                           _buildSaveButton(),
                         ],
                       ),
@@ -207,7 +244,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
           icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2D5A40)),
           items: items,
           onChanged: onChanged,
-          dropdownColor: const Color(0xFFF0F4F1), // Світлий фон випадаючого списку
+          dropdownColor: const Color(0xFFF0F4F1),
           borderRadius: BorderRadius.circular(15),
         ),
       ),
@@ -225,17 +262,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
             decoration: BoxDecoration(
               color: (selectedGroup != null) ? const Color(0xFF2D5A40) : Colors.grey,
               borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2D5A40).withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                )
-              ],
             ),
             child: const Center(
               child: Text(
-                "ПРОДОВЖИТИ",
+                "ЗБЕРЕГТИ ЗМІНИ",
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
               ),
             ),

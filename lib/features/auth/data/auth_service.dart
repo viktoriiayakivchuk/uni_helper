@@ -8,11 +8,11 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Стрім для відстеження стану авторизації
   Stream<User?> get userStream => _auth.authStateChanges();
 
   Future<User?> signInWithGoogle() async {
     try {
+      // Примусовий вибір акаунта (допомагає, якщо ви видалили юзера з бази)
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
@@ -32,15 +32,13 @@ class AuthService {
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Перевіряємо, чи є вже такий користувач у базі
         final doc = await _firestore.collection('users').doc(user.uid).get();
         
         if (!doc.exists) {
-          // Якщо новий — створюємо базовий профіль
           UserModel newUser = UserModel(
             uid: user.uid,
             email: user.email!,
-            fullName: user.displayName ?? "Студент ПНУ",
+            fullName: user.displayName ?? "Студент КНУВС",
           );
           await _firestore.collection('users').doc(user.uid).set(newUser.toMap());
         }
@@ -51,8 +49,9 @@ class AuthService {
     }
   }
 
+  // Метод для повного виходу, щоб змінити користувача
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    await _googleSignIn.signOut(); // Обов'язково для скидання Google-сесії
     await _auth.signOut();
   }
 }

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../auth/data/auth_service.dart';
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import '../../../../screens/social_life_screen.dart';
@@ -25,7 +26,13 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Widget> get _pages => [
         const SchedulePage(),
-        const Center(child: Text('Чат-бот UniHelper\n(Ставимо запитання тут)', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF2D5A40)))),
+        const Center(
+          child: Text(
+            'Чат-бот UniHelper\n(Ставимо запитання тут)', 
+            textAlign: TextAlign.center, 
+            style: TextStyle(color: Color(0xFF2D5A40))
+          )
+        ),
         const GlossaryPage(),
         _buildProfileTab(),
       ];
@@ -36,10 +43,9 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // --- ВІДЖЕТ: ПОРАДА ДНЯ (п. 169 ТЗ) ---
+  // --- ВІДЖЕТ: ПОРАДА ДНЯ ---
   Widget _buildDailyQuote() {
     final int dayOfMonth = DateTime.now().day;
-    // Вибираємо цитату за днем місяця, щоб вона змінювалась щодня (п. 167 ТЗ)
     final String quote = MotivationData.dailyQuotes[dayOfMonth % MotivationData.dailyQuotes.length];
 
     return Container(
@@ -58,15 +64,9 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "ПОРАДА ДНЯ",
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 1.2),
-                ),
+                const Text("ПОРАДА ДНЯ", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54, letterSpacing: 1.2)),
                 const SizedBox(height: 4),
-                Text(
-                  quote,
-                  style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Color(0xFF2D5A40)),
-                ),
+                Text(quote, style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Color(0xFF2D5A40))),
               ],
             ),
           ),
@@ -75,7 +75,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // --- РОЗУМНА ВКЛАДКА ПРОФІЛЮ З GLASS DESIGN ---
+  // --- ВКЛАДКА ПРОФІЛЮ ---
   Widget _buildProfileTab() {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -105,7 +105,6 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             children: [
               const SizedBox(height: 40),
-              // Головна картка студента
               ClipRRect(
                 borderRadius: BorderRadius.circular(30),
                 child: BackdropFilter(
@@ -126,17 +125,10 @@ class _MainScreenState extends State<MainScreen> {
                           child: user.photoURL == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
                         ),
                         const SizedBox(height: 15),
-                        Text(
-                          user.displayName ?? 'Студент КНУВС',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
-                        ),
+                        Text(user.displayName ?? 'Студент КНУВС', textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
                         const SizedBox(height: 5),
                         Text(user.email ?? '', style: TextStyle(color: Colors.black.withOpacity(0.5), fontSize: 14)),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Divider(color: Colors.white54),
-                        ),
+                        const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Colors.white54)),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
@@ -149,15 +141,17 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ),
-              
-              // Порада дня (інтегрована згідно з ТЗ)
               _buildDailyQuote(),
-
-              // Картка факультету
               _buildSimpleInfoCard(Icons.account_balance_rounded, "Факультет", data['faculty']),
-              const SizedBox(height: 20),
-              
-              // Кнопка виходу
+              const SizedBox(height: 15),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => CompleteProfilePage(onSaved: () => setState(() {}))));
+                },
+                icon: const Icon(Icons.edit_note_rounded, color: Color(0xFF2D5A40)),
+                label: const Text("Редагувати дані профілю", style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 25),
               _buildLogoutButton(),
               const SizedBox(height: 120),
             ],
@@ -170,7 +164,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildMiniStat(String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, letterSpacing: 1.1)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         const SizedBox(height: 4),
         Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
       ],
@@ -180,10 +174,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildSimpleInfoCard(IconData icon, String title, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.4), borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           Icon(icon, color: const Color(0xFF2D5A40)),
@@ -205,14 +196,14 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildLogoutButton() {
     return TextButton.icon(
       onPressed: () async {
-        await FirebaseAuth.instance.signOut();
+        await AuthService().signOut();
         setState(() {});
       },
       icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-      label: const Text("ВИЙТИ З АКАУНТА", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+      label: const Text("ВИЙТИ З АКАУНТА / ЗМІНИТИ КОРИСТУВАЧА", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
       style: TextButton.styleFrom(
         backgroundColor: Colors.redAccent.withOpacity(0.05),
-        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     );
@@ -228,20 +219,11 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'UniHelper',
-          style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.bold),
-        ),
+        title: const Text('UniHelper', style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded, color: Color(0xFF2D5A40)),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF2D5A40)),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -254,10 +236,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
-          IndexedStack(
-            index: _selectedIndex,
-            children: _pages,
-          ),
+          IndexedStack(index: _selectedIndex, children: _pages),
         ],
       ),
       bottomNavigationBar: _buildBottomNavigationBar(),
@@ -288,21 +267,15 @@ class _MainScreenState extends State<MainScreen> {
           }),
           _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () => Navigator.pop(context)),
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () => Navigator.pop(context)),
-          
-          // ПЕРЕХІД: ПІДТРИМКА ТА МОТИВАЦІЯ
           _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const SupportPage()));
           }),
-          
           const Divider(),
-          
-          // ПЕРЕХІД: ОФІЦІЙНІ РЕСУРСИ
           _drawerItem(Icons.link, 'Офіційні ресурси', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourcesPage()));
           }),
-          
           _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
             Navigator.pop(context);
             Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactsPage()));
@@ -326,9 +299,7 @@ class _MainScreenState extends State<MainScreen> {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(30),
@@ -342,8 +313,6 @@ class _MainScreenState extends State<MainScreen> {
               unselectedItemColor: Colors.black38,
               elevation: 0,
               type: BottomNavigationBarType.fixed,
-              showSelectedLabels: true,
-              showUnselectedLabels: false,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Розклад'),
                 BottomNavigationBarItem(icon: Icon(Icons.smart_toy_rounded), label: 'Бот'),
