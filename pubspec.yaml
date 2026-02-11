@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Робота з PDF (оновлено на більш стабільний для Web пакет)
+  # Робота з PDF
   pdfx: ^2.5.0
   path_provider: ^2.1.2 
 
@@ -26,7 +26,7 @@ dependencies:
   intl: ^0.20.2 
   url_launcher: ^6.3.2 
   shared_preferences: ^2.3.2 
-  share_plus: ^12.0.1 
+  share_plus: ^10.1.0 # Залишено одну стабільну версію
 
 dev_dependencies:
   flutter_test:
@@ -41,3 +41,5 @@ flutter:
     - assets/docs/indyvidual_grafik.pdf
     - assets/docs/stypendia.pdf
     - assets/docs/ugoda_praktyka.pdf
+    - assets/docs/student_card.pdf # Додано новий актив
+    - assets/docs/dormitory.pdf    # Додано новий актив

@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:share_plus/share_plus.dart';
 
 class DocumentDetailPage extends StatefulWidget {
   final Map<String, dynamic> doc;
-
   const DocumentDetailPage({super.key, required this.doc});
 
   @override
@@ -52,15 +52,11 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
         Directory? downloadsDir;
 
         if (Platform.isAndroid) {
-          // Прямий шлях до папки завантажень Android
           downloadsDir = Directory('/storage/emulated/0/Download');
-          
-          // Якщо папка недоступна, використовуємо зовнішнє сховище додатка
           if (!await downloadsDir.exists()) {
             downloadsDir = await getExternalStorageDirectory();
           }
         } else {
-          // Для iOS використовуємо документи додатка
           downloadsDir = await getApplicationDocumentsDirectory();
         }
 
@@ -108,6 +104,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                 style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 25),
 
+            // КНОПКИ: ПЕРЕГЛЯД ТА ЗАВАНТАЖЕННЯ
             Row(
               children: [
                 Expanded(
@@ -130,8 +127,8 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download, color: Color(0xFF1B3A29)),
                     label: const Text("ЗБЕРЕГТИ"),
-                    onPressed: () => _savePdf(
-                        widget.doc['pdfPath'], widget.doc['title']),
+                    onPressed: () =>
+                        _savePdf(widget.doc['pdfPath'], widget.doc['title']),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFF1B3A29)),
                       shape: RoundedRectangleBorder(
@@ -144,29 +141,60 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
             ),
 
             const SizedBox(height: 35),
+
+            // АЛГОРИТМ ДІЙ (ТЗ 3.44)
+            const Text("АЛГОРИТМ ДІЙ",
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: Colors.grey)),
+            const SizedBox(height: 10),
+            ...((widget.doc['steps'] as List).map((step) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline,
+                          size: 18, color: Color(0xFF1B3A29)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child:
+                              Text(step, style: const TextStyle(fontSize: 14))),
+                    ],
+                  ),
+                ))),
+
+            const SizedBox(height: 35),
+
+            // ТЕКСТОВА ВЕРСІЯ ТА КНОПКА SHARE (ТЗ 3.59)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("ТЕКСТОВА ВЕРСІЯ (ДЛЯ КОПІЮВАННЯ)",
+                const Text("ТЕКСТОВА ВЕРСІЯ",
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.grey,
                         fontSize: 12)),
-                IconButton(
-                  icon: const Icon(Icons.copy_all, color: Color(0xFF1B3A29)),
-                  onPressed: () =>
-                      _copyToClipboard(context, widget.doc['template']),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.share, color: Color(0xFF1B3A29)),
+                      onPressed: () => Share.share(widget.doc['template']),
+                    ),
+                    IconButton(
+                      icon:
+                          const Icon(Icons.copy_all, color: Color(0xFF1B3A29)),
+                      onPressed: () =>
+                          _copyToClipboard(context, widget.doc['template']),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF2D5A40).withOpacity(0.05),
                 borderRadius: BorderRadius.circular(15),
-                border:
-                    Border.all(color: const Color(0xFF2D5A40).withOpacity(0.1)),
               ),
               child: SelectableText(widget.doc['template'],
                   style: const TextStyle(fontFamily: 'monospace')),
