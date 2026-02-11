@@ -16,11 +16,12 @@ dependencies:
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.2
   
-  # Додаткові корисні пакети для нашого ТЗ
+  # Додаткові пакети для функціоналу
   cupertino_icons: ^1.0.6
   google_sign_in: ^6.2.1
   intl: ^0.20.2 # Для форматування дати у розкладі
-  url_launcher: ^6.3.2
+  url_launcher: ^6.3.2 # Для відкриття посилань та дзвінків
+  shared_preferences: ^2.3.2 # Для збереження прогресу адаптації
 
 dev_dependencies:
   flutter_test:
@@ -30,6 +31,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Якщо у вас будуть картинки, розкоментуйте це пізніше:
-  # assets:
-  #   - assets/images/
+  # Реєстрація ресурсів
+  assets:
+    - assets/data/ # Дозволяє додатку бачити ваші JSON-файли
