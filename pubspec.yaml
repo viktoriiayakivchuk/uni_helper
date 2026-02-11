@@ -11,17 +11,22 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Робота з PDF (оновлено на більш стабільний для Web пакет)
+  pdfx: ^2.5.0
+  path_provider: ^2.1.2 
+
   # Основні пакети Firebase
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.2
   
-  # Додаткові пакети для функціоналу
+  # Додаткові пакети
   cupertino_icons: ^1.0.6
   google_sign_in: ^6.2.1
-  intl: ^0.20.2 # Для форматування дати у розкладі
-  url_launcher: ^6.3.2 # Для відкриття посилань та дзвінків
-  shared_preferences: ^2.3.2 # Для збереження прогресу адаптації
+  intl: ^0.20.2 
+  url_launcher: ^6.3.2 
+  shared_preferences: ^2.3.2 
+  share_plus: ^12.0.1 
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +36,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Реєстрація ресурсів
   assets:
-    - assets/data/ # Дозволяє додатку бачити ваші JSON-файли
+    - assets/data/
+    - assets/docs/indyvidual_grafik.pdf
+    - assets/docs/stypendia.pdf
+    - assets/docs/ugoda_praktyka.pdf

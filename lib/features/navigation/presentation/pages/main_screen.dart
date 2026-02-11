@@ -6,8 +6,9 @@ import '../../../auth/data/auth_service.dart';
 import '../../../schedule/presentation/pages/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
-// ДОДАНО: Імпорт сторінки плану адаптації
 import 'package:uni_helper/features/adaptation/presentation/pages/adaptation_plan_page.dart';
+// ДОДАНО: Імпорт сторінки путівника по документах
+import 'package:uni_helper/features/documents/presentation/pages/documents_page.dart';
 import '../../../contacts/presentation/pages/contacts_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/complete_profile_page.dart';
@@ -26,7 +27,6 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Основні вкладки BottomNavigationBar
   List<Widget> get _pages => [
         const SchedulePage(),
         const Center(
@@ -43,7 +43,6 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  // --- ВІДЖЕТ: ПОРАДА ДНЯ ---
   Widget _buildDailyQuote() {
     final int dayOfMonth = DateTime.now().day;
     final String quote = MotivationData
@@ -86,7 +85,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // --- ВКЛАДКА ПРОФІЛЮ ---
   Widget _buildProfileTab() {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -145,7 +143,7 @@ class _MainScreenState extends State<MainScreen> {
                               : null,
                         ),
                         const SizedBox(height: 15),
-                        Text(user.displayName ?? 'Студент КНУВС',
+                        Text(user.displayName ?? 'Студент ПНУ',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                                 fontSize: 22,
@@ -332,7 +330,6 @@ class _MainScreenState extends State<MainScreen> {
                     builder: (context) => const SocialLifePage()));
           }),
 
-          // ОНОВЛЕНО: Перехід на сторінку Плану адаптації
           _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації',
               () {
             Navigator.pop(context);
@@ -342,8 +339,12 @@ class _MainScreenState extends State<MainScreen> {
                     builder: (context) => const AdaptationPlanPage()));
           }),
 
-          _drawerItem(Icons.description_outlined, 'Путівник по документах',
-              () => Navigator.pop(context)),
+          // ОНОВЛЕНО: Перехід на сторінку Путівника по документах
+          _drawerItem(Icons.description_outlined, 'Путівник по документах', () {
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const DocumentsPage()));
+          }),
 
           _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
             Navigator.pop(context);
