@@ -16,3 +16,4 @@ For help getting started with Flutter development, view the
 samples, guidance on mobile development, and a full API reference.
  
  Для запуску проєкту встановіть Firebase CLI та виконайте команду: flutterfire configure --project=unihelper-d5770
+ для запуску у вебі : flutter run -d chrome --web-port=5000
