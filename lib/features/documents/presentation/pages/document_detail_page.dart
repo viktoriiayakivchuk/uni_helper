@@ -1,9 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:flutter/foundation.dart' show kIsWeb; 
-import 'dart:io'; 
-import 'package:path_provider/path_provider.dart'; 
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class DocumentDetailPage extends StatefulWidget {
   final Map<String, dynamic> doc;
@@ -15,7 +15,7 @@ class DocumentDetailPage extends StatefulWidget {
 }
 
 class _DocumentDetailPageState extends State<DocumentDetailPage> {
-  // Функція для копіювання тексту
+  // Копіювання тексту шаблону
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -25,7 +25,7 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  // Функція для перегляду PDF
+  // Перегляд PDF через екран прев'ю
   void _openPdfPreview(BuildContext context) {
     Navigator.push(
       context,
@@ -38,33 +38,52 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
     );
   }
 
-  // Кросплатформна функція збереження
+  // Збереження файлу у папку "Завантаження" (Downloads)
   Future<void> _savePdf(String assetPath, String fileName) async {
     try {
       final byteData = await rootBundle.load(assetPath);
       final bytes = byteData.buffer.asUint8List();
 
       if (kIsWeb) {
-        // Логіка для Web (за потреби реалізуємо через універсальний пакет)
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Завантаження у браузері наразі обмежене')),
+          const SnackBar(content: Text('Завантаження у браузері обмежене')),
         );
       } else {
-        // Логіка для Mobile (Android/iOS)
-        final directory = await getApplicationDocumentsDirectory();
-        final path = "${directory.path}/$fileName.pdf";
-        final file = File(path);
+        Directory? downloadsDir;
+
+        if (Platform.isAndroid) {
+          // Прямий шлях до папки завантажень Android
+          downloadsDir = Directory('/storage/emulated/0/Download');
+          
+          // Якщо папка недоступна, використовуємо зовнішнє сховище додатка
+          if (!await downloadsDir.exists()) {
+            downloadsDir = await getExternalStorageDirectory();
+          }
+        } else {
+          // Для iOS використовуємо документи додатка
+          downloadsDir = await getApplicationDocumentsDirectory();
+        }
+
+        final savePath = "${downloadsDir?.path}/$fileName.pdf";
+        final file = File(savePath);
         await file.writeAsBytes(bytes);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Файл збережено у документи додатка'),
-            backgroundColor: const Color(0xFF1B3A29),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Збережено у Завантаження: $fileName.pdf'),
+              backgroundColor: const Color(0xFF1B3A29),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint("Помилка завантаження: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Помилка при збереженні файлу')),
+        );
+      }
     }
   }
 
@@ -159,7 +178,6 @@ class _DocumentDetailPageState extends State<DocumentDetailPage> {
   }
 }
 
-// ВІДЖЕТ ПЕРЕГЛЯДУ (ЯКИЙ БУВ ВІДСУТНІЙ)
 class PdfPreviewScreen extends StatefulWidget {
   final String assetPath;
   final String title;
