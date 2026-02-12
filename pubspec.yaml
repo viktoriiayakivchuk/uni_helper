@@ -17,6 +17,11 @@ dependencies:
   cloud_firestore: ^5.6.2
   shared_preferences: ^2.3.5
   
+  # Для парсингу HTML
+  http: ^1.2.0
+  html: ^0.15.4
+  windows1251: ^2.0.1  
+  
   # Додаткові корисні пакети для нашого ТЗ
   cupertino_icons: ^1.0.6
   google_sign_in: ^6.2.1

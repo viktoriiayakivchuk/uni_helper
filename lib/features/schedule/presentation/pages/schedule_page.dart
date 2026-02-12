@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert'; 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../domain/lesson_model.dart';
 import '../widgets/lesson_card.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/schedule_repository.dart'; 
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -14,48 +16,120 @@ class SchedulePage extends StatefulWidget {
 }
 
 class _SchedulePageState extends State<SchedulePage> {
-  // 1. ЗМІНА: Ставимо тижневий формат за замовчуванням
-  CalendarFormat _calendarFormat = CalendarFormat.week; 
+  // Налаштування календаря
+  CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Lesson>> _events = {};
+
+  // Змінні для роботи з групою
+  String? _userGroup; 
+  bool _isLoading = false;
+  final TextEditingController _groupController = TextEditingController();
+  final ScheduleRepository _scheduleRepository = ScheduleRepository();
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _events = _getMockEvents();
-    _loadEvents();
+    _checkUserGroup(); // Перевіряємо при старті, чи є група
   }
 
-  // --- ЛОГІКА LOCAL STORAGE ---
+  // --- ЛОГІКА АВТОРИЗАЦІЇ ---
+  Future<void> _checkUserGroup() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userGroup = prefs.getString('saved_group');
+    });
+
+    if (_userGroup != null) {
+      _loadEvents(); // Група є -> вантажимо події
+    }
+  }
+
+  Future<void> _loginWithGroup(String groupId) async {
+    if (groupId.isEmpty) return;
+    
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Отримуємо розклад через репозиторій
+      final lessons = await _scheduleRepository.fetchSchedule(groupId);
+      
+      if (lessons.isEmpty) {
+        throw Exception("Пар не знайдено. Перевірте ID групи (напр. -4636)");
+      }
+
+      // 2. Зберігаємо ID групи
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_group', groupId);
+
+      // 3. Конвертуємо список уроків у формат календаря Map<DateTime, List>
+      Map<DateTime, List<Lesson>> newEvents = {};
+      
+      // Додаємо нові пари (замінюючи старі на ці дні)
+      for (var lesson in lessons) {
+        final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
+        if (newEvents[dateKey] == null) newEvents[dateKey] = [];
+        newEvents[dateKey]!.add(lesson);
+      }
+
+      setState(() {
+        _userGroup = groupId;
+        _events = newEvents;
+      });
+      
+      await _saveEvents(); // Зберігаємо розклад локально
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Успішно завантажено ${lessons.length} пар!')),
+      );
+      
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Помилка: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+  
+  Future<void> _logoutGroup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('saved_group');
+    await prefs.remove('user_schedule_data'); // Очищаємо кеш розкладу
+    setState(() {
+      _userGroup = null;
+      _events = {}; 
+      _groupController.clear();
+    });
+  }
+
+  // --- ЛОГІКА ЗБЕРЕЖЕННЯ ---
   Future<void> _saveEvents() async {
     final prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> exportData = {};
     _events.forEach((date, lessons) {
       exportData[date.toIso8601String()] = lessons.map((l) => l.toMap()).toList();
     });
-    await prefs.setString('user_schedule', json.encode(exportData));
+    await prefs.setString('user_schedule_data', json.encode(exportData));
   }
 
   Future<void> _loadEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? savedData = prefs.getString('user_schedule');
-
-    if (savedData != null) {
-      final Map<String, dynamic> decodedData = json.decode(savedData);
-      Map<DateTime, List<Lesson>> loadedEvents = {};
-
-      decodedData.forEach((dateStr, lessonsList) {
-        final date = DateTime.parse(dateStr);
-        final lessons = (lessonsList as List).map((l) => Lesson.fromMap(l)).toList();
-        loadedEvents[date] = lessons;
-      });
-
-      setState(() {
-        _events = loadedEvents;
-      });
-    }
+      final prefs = await SharedPreferences.getInstance();
+      final String? savedData = prefs.getString('user_schedule_data');
+      if (savedData != null) {
+        final Map<String, dynamic> decodedData = json.decode(savedData);
+        Map<DateTime, List<Lesson>> loadedEvents = {};
+        decodedData.forEach((dateStr, lessonsList) {
+          final date = DateTime.parse(dateStr);
+          loadedEvents[date] = (lessonsList as List).map((l) => Lesson.fromMap(l)).toList();
+        });
+        setState(() => _events = loadedEvents);
+      }
   }
 
   List<Lesson> _getEventsForDay(DateTime day) {
@@ -63,10 +137,35 @@ class _SchedulePageState extends State<SchedulePage> {
     return _events[normalizedDay] ?? [];
   }
 
+  // --- UI ---
   @override
   Widget build(BuildContext context) {
+    // ЯКЩО ГРУПИ НЕМАЄ -> ЕКРАН ВХОДУ
+    if (_userGroup == null) {
+      return _buildLoginScreen();
+    }
+
+    // ЯКЩО Є -> КАЛЕНДАР
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Column(
+          children: [
+            const Text("Мій розклад", style: TextStyle(color: Colors.black87, fontSize: 14)),
+            Text("ID: $_userGroup", style: const TextStyle(color: Color(0xFF2D5A40), fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: _logoutGroup,
+            tooltip: "Вийти (Змінити групу)",
+          )
+        ],
+      ),
       body: Column(
         children: [
           _buildCalendar(),
@@ -77,29 +176,93 @@ class _SchedulePageState extends State<SchedulePage> {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 105.0),
         child: FloatingActionButton(
-          onPressed: () {
-            _showAddEventDialog();
-          },
+          onPressed: () => _showAddEventDialog(),
           backgroundColor: const Color(0xFF2D5A40),
-          elevation: 4,
           child: const Icon(Icons.add, color: Colors.white),
         ),
       ),
     );
   }
 
+  Widget _buildLoginScreen() {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D5A40).withOpacity(0.1),
+                shape: BoxShape.circle
+              ),
+              child: const Icon(Icons.school_rounded, size: 60, color: Color(0xFF2D5A40)),
+            ),
+            const SizedBox(height: 30),
+            const Text(
+              "Вітаємо в Uni Helper!",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              "Введіть ID вашої групи (наприклад -4636), щоб завантажити розклад.",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 40),
+            
+            TextField(
+              controller: _groupController,
+              keyboardType: TextInputType.text, // Щоб ввести мінус "-"
+              decoration: InputDecoration(
+                labelText: "ID групи",
+                hintText: "Наприклад: -4636",
+                helperText: "Цей ID можна знайти в посиланні на сайті розкладу",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                prefixIcon: const Icon(Icons.numbers_rounded),
+                filled: true,
+                fillColor: Colors.grey[50],
+              ),
+            ),
+            
+            const SizedBox(height: 25),
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : () {
+                  _loginWithGroup(_groupController.text.trim());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D5A40),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  elevation: 2,
+                ),
+                child: _isLoading 
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text("Отримати розклад", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // --- ТУТ ЗАЛИШАЮТЬСЯ ВАШІ МЕТОДИ UI (_buildCalendar, _buildEventList, _showEventDetails, _showAddEventDialog) ---
+  // Ті, що ви вже закомітили в попередньому кроці.
+  // Просто переконайтеся, що вони тут є.
+  
   Widget _buildCalendar() {
-    return Container(
+     // ... Код календаря з попереднього кроку ...
+     // (Я не дублюю його, щоб не забивати відповідь, але він тут має бути)
+     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2D5A40).withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          )
-        ],
+        boxShadow: [BoxShadow(color: const Color(0xFF2D5A40).withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: TableCalendar<Lesson>(
         firstDay: DateTime.utc(2024, 1, 1),
@@ -117,66 +280,38 @@ class _SchedulePageState extends State<SchedulePage> {
           }
         },
         onFormatChanged: (format) {
-          if (_calendarFormat != format) {
-            setState(() {
-              _calendarFormat = format;
-            });
-          }
+          if (_calendarFormat != format) setState(() => _calendarFormat = format);
         },
         eventLoader: _getEventsForDay,
-        
-        // 2. ЗМІНА: Кастомний білдер для маркерів (обмежуємо до 3-х)
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             if (events.isEmpty) return null;
-            
             return Positioned(
               bottom: 1,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: events.take(3).map((_) { // <-- Беремо максимум 3 події
+                children: events.take(3).map((_) { 
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                    width: 5, // Зробив трохи меншими та акуратнішими
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.orangeAccent,
-                    ),
+                    width: 5, height: 5,
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.orangeAccent),
                   );
                 }).toList(),
               ),
             );
           },
         ),
-
         calendarStyle: CalendarStyle(
-          selectedDecoration: const BoxDecoration(
-            color: Color(0xFF2D5A40),
-            shape: BoxShape.circle,
-          ),
-          todayDecoration: BoxDecoration(
-            color: const Color(0xFF2D5A40).withOpacity(0.4),
-            shape: BoxShape.circle,
-          ),
-          // markerDecoration ми прибрали, бо тепер працює markerBuilder
+          selectedDecoration: const BoxDecoration(color: Color(0xFF2D5A40), shape: BoxShape.circle),
+          todayDecoration: BoxDecoration(color: const Color(0xFF2D5A40).withOpacity(0.4), shape: BoxShape.circle),
         ),
-        headerStyle: const HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: TextStyle(
-            color: Color(0xFF2D5A40),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextStyle: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.bold, fontSize: 18)),
       ),
     );
   }
 
   Widget _buildEventList() {
     final events = _getEventsForDay(_selectedDay!);
-
     if (events.isEmpty) {
       return Center(
         child: Column(
@@ -184,15 +319,11 @@ class _SchedulePageState extends State<SchedulePage> {
           children: [
             Icon(Icons.weekend_rounded, size: 60, color: Colors.grey.withOpacity(0.4)),
             const SizedBox(height: 10),
-            Text(
-              "На цей день справ немає",
-              style: TextStyle(color: Colors.grey.withOpacity(0.8), fontSize: 16),
-            ),
+            Text("На цей день справ немає", style: TextStyle(color: Colors.grey.withOpacity(0.8), fontSize: 16)),
           ],
         ),
       );
     }
-
     return ListView.builder(
       padding: const EdgeInsets.only(left: 20, right: 20, top: 10, bottom: 120),
       itemCount: events.length,
@@ -205,210 +336,9 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  Map<DateTime, List<Lesson>> _getMockEvents() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    return {
-      today: [
-        Lesson(
-          id: '1',
-          title: 'Мобільна розробка',
-          description: 'ауд. 305 / лекція',
-          startTime: DateTime(now.year, now.month, now.day, 10, 10),
-          endTime: DateTime(now.year, now.month, now.day, 11, 30),
-          type: LessonType.lecture,
-        ),
-        Lesson(
-          id: '2',
-          title: 'Основи UI/UX',
-          description: 'Zoom конференція',
-          startTime: DateTime(now.year, now.month, now.day, 11, 50),
-          endTime: DateTime(now.year, now.month, now.day, 13, 10),
-          type: LessonType.practice,
-        ),
-      ],
-    };
-  }
-
-  void _showAddEventDialog({Lesson? eventToEdit}) {
-    final titleController = TextEditingController(text: eventToEdit?.title ?? "");
-    final descController = TextEditingController(text: eventToEdit?.description ?? "");
-    
-    TimeOfDay selectedStartTime = eventToEdit != null 
-        ? TimeOfDay.fromDateTime(eventToEdit.startTime) 
-        : const TimeOfDay(hour: 9, minute: 0);
-    TimeOfDay selectedEndTime = eventToEdit != null 
-        ? TimeOfDay.fromDateTime(eventToEdit.endTime) 
-        : const TimeOfDay(hour: 10, minute: 0);
-        
-    LessonType selectedType = eventToEdit?.type ?? LessonType.practice;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            top: 25, left: 20, right: 20,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                eventToEdit == null ? "Нова справа" : "Редагування", 
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))
-              ),
-              const SizedBox(height: 20),
-              
-              TextField(
-                controller: titleController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  labelText: "Що плануєте? *",
-                  hintText: "Напр. Спортзал",
-                  prefixIcon: const Icon(Icons.task_alt_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-              ),
-              const SizedBox(height: 15),
-              
-              TextField(
-                controller: descController,
-                decoration: InputDecoration(
-                  labelText: "Нотатки (необов'язково)",
-                  hintText: "Напр. Взяти форму",
-                  prefixIcon: const Icon(Icons.notes_rounded),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final time = await showTimePicker(context: context, initialTime: selectedStartTime);
-                        if (time != null) setModalState(() => selectedStartTime = time);
-                      },
-                      icon: const Icon(Icons.access_time),
-                      label: Text(selectedStartTime.format(context)),
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text("-", style: TextStyle(fontSize: 20, color: Colors.grey)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final time = await showTimePicker(context: context, initialTime: selectedEndTime);
-                        if (time != null) setModalState(() => selectedEndTime = time);
-                      },
-                      icon: const Icon(Icons.access_time_filled),
-                      label: Text(selectedEndTime.format(context)),
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 30),
-              
-              ElevatedButton(
-                onPressed: () {
-                  if (titleController.text.isEmpty) {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Введіть назву справи!')));
-                     return;
-                  }
-
-                  if (eventToEdit != null) {
-                      final oldDate = DateTime(eventToEdit.startTime.year, eventToEdit.startTime.month, eventToEdit.startTime.day);
-                      setState(() {
-                        _events[oldDate]?.removeWhere((l) => l.id == eventToEdit.id);
-                      });
-                  }
-
-                  _addNewEvent(
-                    titleController.text,
-                    descController.text,
-                    selectedStartTime,
-                    selectedEndTime,
-                    selectedType,
-                  );
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2D5A40),
-                  minimumSize: const Size(double.infinity, 55),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 2,
-                ),
-                child: Text(
-                  eventToEdit == null ? "Додати в розклад" : "Зберегти зміни", 
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, LessonType type) {
-    if (_selectedDay == null) return;
-
-    final normalizedDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-    
-    final newLesson = Lesson(
-      id: DateTime.now().toString(),
-      title: title,
-      description: desc,
-      startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute),
-      endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute),
-      type: type,
-    );
-
-    setState(() {
-      if (_events[normalizedDay] != null) {
-        _events[normalizedDay]!.add(newLesson);
-      } else {
-        _events[normalizedDay] = [newLesson];
-      }
-      _events[normalizedDay]!.sort((a, b) => a.startTime.compareTo(b.startTime));
-    });
-    _saveEvents();
-  }
-
-  void _deleteEvent(Lesson lesson) {
-    final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
-    setState(() {
-      _events[dateKey]?.removeWhere((l) => l.id == lesson.id);
-      _saveEvents();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Справу видалено')));
-  }
-
   void _showEventDetails(Lesson lesson) {
-    showDialog(
+     // ... Код вікна деталей ...
+     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
@@ -420,71 +350,97 @@ class _SchedulePageState extends State<SchedulePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  lesson.title,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
-                ),
+                Text(lesson.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
                 const SizedBox(height: 15),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time_rounded, color: Colors.orangeAccent),
-                    const SizedBox(width: 10),
-                    Text(
-                      "${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}",
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                ),
+                Row(children: [const Icon(Icons.access_time_rounded, color: Colors.orangeAccent), const SizedBox(width: 10), Text("${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))]),
                 const SizedBox(height: 10),
-                if (lesson.description.isNotEmpty)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.notes_rounded, color: Colors.grey),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          lesson.description,
-                          style: const TextStyle(fontSize: 16, color: Colors.black87),
-                        ),
-                      ),
-                    ],
-                  ),
+                if (lesson.description.isNotEmpty) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.notes_rounded, color: Colors.grey), const SizedBox(width: 10), Expanded(child: Text(lesson.description, style: const TextStyle(fontSize: 16, color: Colors.black87)))]),
                 const SizedBox(height: 25),
                 const Divider(),
                 const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        _deleteEvent(lesson);
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                      label: const Text("Видалити", style: TextStyle(color: Colors.redAccent)),
-                    ),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                    TextButton.icon(onPressed: () { _deleteEvent(lesson); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Видалено'))); }, icon: const Icon(Icons.delete_outline, color: Colors.redAccent), label: const Text("Видалити", style: TextStyle(color: Colors.redAccent))),
                     const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _showAddEventDialog(eventToEdit: lesson);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2D5A40),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text("Змінити"),
-                    ),
-                  ],
-                )
+                    ElevatedButton.icon(onPressed: () { Navigator.pop(context); _showAddEventDialog(eventToEdit: lesson); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5A40), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text("Змінити")),
+                ])
               ],
             ),
           ),
         );
       },
     );
+  }
+
+  void _showAddEventDialog({Lesson? eventToEdit}) {
+     // ... Код вікна редагування ...
+     // (Використайте той самий код, що й раніше)
+     final titleController = TextEditingController(text: eventToEdit?.title ?? "");
+    final descController = TextEditingController(text: eventToEdit?.description ?? "");
+    TimeOfDay selectedStartTime = eventToEdit != null ? TimeOfDay.fromDateTime(eventToEdit.startTime) : const TimeOfDay(hour: 9, minute: 0);
+    TimeOfDay selectedEndTime = eventToEdit != null ? TimeOfDay.fromDateTime(eventToEdit.endTime) : const TimeOfDay(hour: 10, minute: 0);
+    LessonType selectedType = eventToEdit?.type ?? LessonType.practice;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 25, left: 20, right: 20),
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ... Тут ваш код полів вводу ...
+               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 20),
+              Text(eventToEdit == null ? "Нова справа" : "Редагування", style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
+              const SizedBox(height: 20),
+              TextField(controller: titleController, decoration: InputDecoration(labelText: "Що плануєте? *", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), filled: true, fillColor: Colors.grey[50])),
+              const SizedBox(height: 15),
+              TextField(controller: descController, decoration: InputDecoration(labelText: "Нотатки", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), filled: true, fillColor: Colors.grey[50])),
+              const SizedBox(height: 20),
+              Row(children: [
+                  Expanded(child: OutlinedButton.icon(onPressed: () async { final time = await showTimePicker(context: context, initialTime: selectedStartTime); if (time != null) setModalState(() => selectedStartTime = time); }, icon: const Icon(Icons.access_time), label: Text(selectedStartTime.format(context)))),
+                  const SizedBox(width: 10),
+                  Expanded(child: OutlinedButton.icon(onPressed: () async { final time = await showTimePicker(context: context, initialTime: selectedEndTime); if (time != null) setModalState(() => selectedEndTime = time); }, icon: const Icon(Icons.access_time_filled), label: Text(selectedEndTime.format(context)))),
+              ]),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: () {
+                  if (titleController.text.isNotEmpty) {
+                    if (eventToEdit != null) _deleteEvent(eventToEdit, save: false);
+                    _addNewEvent(titleController.text, descController.text, selectedStartTime, selectedEndTime, selectedType);
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5A40), minimumSize: const Size(double.infinity, 55), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
+                child: Text(eventToEdit == null ? "Додати" : "Зберегти", style: const TextStyle(color: Colors.white, fontSize: 16)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, LessonType type) {
+    if (_selectedDay == null) return;
+    final normalizedDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+    final newLesson = Lesson(id: DateTime.now().toString(), title: title, description: desc, startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute), endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute), type: type);
+    setState(() {
+      if (_events[normalizedDay] != null) { _events[normalizedDay]!.add(newLesson); } else { _events[normalizedDay] = [newLesson]; }
+      _events[normalizedDay]!.sort((a, b) => a.startTime.compareTo(b.startTime));
+    });
+    _saveEvents();
+  }
+
+  void _deleteEvent(Lesson lesson, {bool save = true}) {
+    final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
+    setState(() {
+      _events[dateKey]?.removeWhere((l) => l.id == lesson.id);
+      if (save) _saveEvents();
+    });
   }
 }
