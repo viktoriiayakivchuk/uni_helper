@@ -3,6 +3,8 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../domain/lesson_model.dart';
 import '../widgets/lesson_card.dart';
+import 'dart:convert'; // Для 'json'
+import 'package:shared_preferences/shared_preferences.dart'; // Для 'SharedPreferences'
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -22,6 +24,40 @@ class _SchedulePageState extends State<SchedulePage> {
     super.initState();
     _selectedDay = _focusedDay;
     _events = _getMockEvents(); // Завантаження тестових даних
+    _loadEvents(); // Завантажуємо дані при старті
+  }
+
+  // --- ЛОГІКА LOCAL STORAGE ---
+
+  Future<void> _saveEvents() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Перетворюємо Map<DateTime, List<Lesson>> у формат, який розуміє JSON
+    Map<String, dynamic> exportData = {};
+    _events.forEach((date, lessons) {
+      exportData[date.toIso8601String()] = lessons.map((l) => l.toMap()).toList();
+    });
+    
+    await prefs.setString('user_schedule', json.encode(exportData));
+  }
+
+  Future<void> _loadEvents() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedData = prefs.getString('user_schedule');
+
+    if (savedData != null) {
+      final Map<String, dynamic> decodedData = json.decode(savedData);
+      Map<DateTime, List<Lesson>> loadedEvents = {};
+
+      decodedData.forEach((dateStr, lessonsList) {
+        final date = DateTime.parse(dateStr);
+        final lessons = (lessonsList as List).map((l) => Lesson.fromMap(l)).toList();
+        loadedEvents[date] = lessons;
+      });
+
+      setState(() {
+        _events = loadedEvents;
+      });
+    }
   }
 
   List<Lesson> _getEventsForDay(DateTime day) {
@@ -46,7 +82,7 @@ class _SchedulePageState extends State<SchedulePage> {
         padding: const EdgeInsets.only(bottom: 105.0),
         child: FloatingActionButton(
           onPressed: () {
-            // Логіка додавання власної події
+            _showAddEventDialog();
           },
           backgroundColor: const Color(0xFF2D5A40),
           elevation: 4,
@@ -175,5 +211,134 @@ class _SchedulePageState extends State<SchedulePage> {
         ),
       ],
     };
+  }
+
+  void _showAddEventDialog() {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    TimeOfDay selectedStartTime = const TimeOfDay(hour: 8, minute: 0);
+    TimeOfDay selectedEndTime = const TimeOfDay(hour: 9, minute: 20);
+    LessonType selectedType = LessonType.lecture;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent, // Для Soft UI ефекту
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            top: 20, left: 20, right: 20,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("Додати свою подію", 
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
+              const SizedBox(height: 20),
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: "Назва (напр. Підготовка до заліку)",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: descController,
+                decoration: InputDecoration(
+                  labelText: "Опис або місце",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+              ),
+              const SizedBox(height: 15),
+              
+              // Вибір типу
+              DropdownButtonFormField<LessonType>(
+                value: selectedType,
+                decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+                items: LessonType.values.map((type) => DropdownMenuItem(
+                  value: type,
+                  child: Text(type.name.toUpperCase()),
+                )).toList(),
+                onChanged: (val) => setModalState(() => selectedType = val!),
+              ),
+              
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  TextButton(
+                    onPressed: () async {
+                      final time = await showTimePicker(context: context, initialTime: selectedStartTime);
+                      if (time != null) setModalState(() => selectedStartTime = time);
+                    },
+                    child: Text("Початок: ${selectedStartTime.format(context)}"),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final time = await showTimePicker(context: context, initialTime: selectedEndTime);
+                      if (time != null) setModalState(() => selectedEndTime = time);
+                    },
+                    child: Text("Кінець: ${selectedEndTime.format(context)}"),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  if (titleController.text.isNotEmpty) {
+                    _addNewEvent(
+                      titleController.text,
+                      descController.text,
+                      selectedStartTime,
+                      selectedEndTime,
+                      selectedType,
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2D5A40),
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                ),
+                child: const Text("Зберегти", style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, LessonType type) {
+    if (_selectedDay == null) return;
+
+    final normalizedDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+    
+    final newLesson = Lesson(
+      id: DateTime.now().toString(), // Генеруємо унікальний ID
+      title: title,
+      description: desc,
+      startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute),
+      endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute),
+      type: type,
+    );
+
+    setState(() {
+      if (_events[normalizedDay] != null) {
+        _events[normalizedDay]!.add(newLesson);
+      } else {
+        _events[normalizedDay] = [newLesson];
+      }
+      // Сортуємо за часом для краси
+      _events[normalizedDay]!.sort((a, b) => a.startTime.compareTo(b.startTime));
+    });
+    _saveEvents(); // Зберігаємо після кожного додавання
   }
 }
