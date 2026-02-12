@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/data/auth_service.dart';
-import '../../../schedule/presentation/pages/pages/schedule_page.dart';
+import '../../../schedule/presentation/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
 import '../../../contacts/presentation/pages/contacts_page.dart';

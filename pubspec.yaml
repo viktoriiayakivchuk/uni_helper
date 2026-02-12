@@ -21,6 +21,9 @@ dependencies:
   google_sign_in: ^6.2.1
   intl: ^0.20.2 # Для форматування дати у розкладі
   url_launcher: ^6.3.2
+  table_calendar: ^3.1.2 # Найкращий віджет календаря для Flutter
+  flutter_local_notifications: ^18.0.1 # Для нагадувань
+  timezone: ^0.10.0 # Для правильної роботи часу сповіщень
 
 dev_dependencies:
   flutter_test:
