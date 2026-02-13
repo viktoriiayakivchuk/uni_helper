@@ -4,7 +4,6 @@ class Faculty {
 
   Faculty({required this.name, required this.id});
   
-  // Важливо для правильної роботи Dropdown
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

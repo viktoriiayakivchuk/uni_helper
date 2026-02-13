@@ -6,14 +6,11 @@ import 'package:intl/intl.dart';
 import '../domain/lesson_model.dart';
 
 class ScheduleRepository {
-  // Базовий URL з параметром n=700 (як у формі на сайті)
   final String baseUrl = 'https://asu-srv.pnu.edu.ua/cgi-bin/timetable.cgi?n=700';
 
-  // ВАЖЛИВО: Тепер цей метод очікує НАЗВУ групи (напр. "ІПЗ-33"), а не ID
   Future<List<Lesson>> fetchSchedule(String groupName) async {
     try {
       final now = DateTime.now();
-      // Завантажуємо розклад на весь семестр (120 днів)
       final futureDate = now.add(const Duration(days: 120)); 
       
       final dateFormat = DateFormat('dd.MM.yyyy');
@@ -22,29 +19,22 @@ class ScheduleRepository {
 
       print('📅 Запит розкладу для групи: "$groupName" на період $sdate - $edate');
 
-      // 1. КОДУВАННЯ НАЗВИ ГРУПИ (UTF-8 -> Windows-1251)
-      // Це найважливіший крок. Сервер не розуміє UTF-8.
       List<int> groupBytes = windows1251.encode(groupName);
       
-      // Перетворюємо байти у формат %XX (URL-encoded)
       String encodedGroup = groupBytes.map((b) => '%${b.toRadixString(16).toUpperCase()}').join('');
       
-      // 2. ФОРМУВАННЯ ТІЛА ЗАПИТУ (Raw String)
-      // Формуємо рядок вручну, щоб контролювати кодування
       String body = "n=700"
-          "&faculty=0"         // "Оберіть факультет" (0 - щоб шукати скрізь)
-          "&course=0"          // "Оберіть курс"
-          "&group=$encodedGroup" // Наша закодована назва
+          "&faculty=0"        
+          "&course=0"         
+          "&group=$encodedGroup"
           "&sdate=$sdate"
           "&edate=$edate"
           "&teacher=";
 
-      // 3. ВІДПРАВКА POST ЗАПИТУ
       final response = await http.post(
         Uri.parse(baseUrl),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          // Referer обов'язковий, бо сервер перевіряє, чи прийшли ми з його сайту
           'Referer': 'https://asu-srv.pnu.edu.ua/cgi-bin/timetable.cgi?n=700',
           'Origin': 'https://asu-srv.pnu.edu.ua',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -53,7 +43,6 @@ class ScheduleRepository {
       );
 
       if (response.statusCode == 200) {
-        // Декодуємо відповідь (вона теж у Windows-1251)
         String htmlBody = windows1251.decode(response.bodyBytes);
         return _parseHtml(htmlBody);
       } else {
@@ -71,14 +60,12 @@ class ScheduleRepository {
 
     var dayBlocks = document.querySelectorAll('div.col-md-6');
     
-    // Регулярка для пошуку дати (напр. 12.02.2024)
     final dateRegExp = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})');
 
     for (var block in dayBlocks) {
       var header = block.querySelector('h4');
       if (header == null) continue;
 
-      // Шукаємо дату в заголовку (ігноруємо назву дня тижня)
       final match = dateRegExp.firstMatch(header.text.trim());
       if (match == null) continue;
 
@@ -112,9 +99,6 @@ class ScheduleRepository {
     print("✅ Успішно завантажено: ${lessons.length} пар");
     return lessons;
   }
-
-  // --- (Решта методів без змін: _createLessonFromCell, _parseDate, _looksLikeTeacher) ---
-  // Скопіюйте їх зі старого файлу або з попередніх повідомлень
   
   Lesson _createLessonFromCell(Element cell, DateTime date, String startStr, String endStr) {
     String description = "";

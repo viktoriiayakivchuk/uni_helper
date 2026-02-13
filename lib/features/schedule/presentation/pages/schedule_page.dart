@@ -20,13 +20,11 @@ class SchedulePage extends StatefulWidget {
 }
 
 class _SchedulePageState extends State<SchedulePage> {
-  // Налаштування календаря
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Lesson>> _events = {};
 
-  // Змінні для роботи з групою
   String? _userGroup; 
   bool _isLoading = false;
   final TextEditingController _groupController = TextEditingController();
@@ -38,11 +36,47 @@ class _SchedulePageState extends State<SchedulePage> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _loadReminders(); // <--- Додаємо виклик
-    _checkUserGroup(); // Перевіряємо при старті, чи є група
+    _loadReminders(); 
+    _checkUserGroup(); 
   }
 
-  // --- НОВІ МЕТОДИ ---
+  Future<void> _setReminderTime(Lesson lesson, int notifId, int minutes) async {
+    final reminderTime = lesson.startTime.subtract(Duration(minutes: minutes));
+    
+    if (reminderTime.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ця подія вже почалась або до її початку залтштлось менше 10хв!'))
+      );
+      return;
+    }
+
+    final String notifTitle = lesson.isUserCreated 
+        ? 'Нагадування: ${lesson.title}' 
+        : 'Скоро пара: ${lesson.title}';
+
+    final String startTimeStr = DateFormat('HH:mm').format(lesson.startTime);
+    final String notifBody = 'Почнеться через $minutes хв (о $startTimeStr)';
+
+    await NotificationService().requestPermissions();
+    await NotificationService().scheduleLessonReminder(
+      id: notifId, 
+      title: notifTitle, 
+      body: notifBody, 
+      scheduledTime: reminderTime
+    );
+    
+    setState(() => _activeReminders.add(notifId));
+    _saveReminders();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Нагадаємо о ${DateFormat('HH:mm').format(reminderTime)}', style: const TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF2D5A40),
+        duration: const Duration(seconds: 2),
+      )
+    );
+  }
+
   Future<void> _loadReminders() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? saved = prefs.getStringList('active_reminders');
@@ -58,11 +92,9 @@ class _SchedulePageState extends State<SchedulePage> {
     await prefs.setStringList('active_reminders', _activeReminders.map((e) => e.toString()).toList());
   }
 
-  // --- ЛОГІКА АВТОРИЗАЦІЇ ---
   Future<void> _checkUserGroup() async {
     String? groupToLoad;
 
-    // 1. Спершу шукаємо групу в профілі Firebase
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -79,7 +111,6 @@ class _SchedulePageState extends State<SchedulePage> {
       print("Помилка отримання групи з Firebase: $e");
     }
 
-    // 2. Якщо в Firebase порожньо (або немає інтернету/юзер гість) - беремо з пам'яті
     if (groupToLoad == null || groupToLoad.isEmpty) {
       final prefs = await SharedPreferences.getInstance();
       groupToLoad = prefs.getString('saved_group');
@@ -88,16 +119,12 @@ class _SchedulePageState extends State<SchedulePage> {
       }
     }
 
-    // 3. Якщо групу знайдено хоч десь — завантажуємо розклад
     if (groupToLoad != null && groupToLoad.isNotEmpty) {
       setState(() {
         _userGroup = groupToLoad;
-        _groupController.text = groupToLoad!; // Заповнюємо поле вводу для наочності (якщо потрібно)
+        _groupController.text = groupToLoad!; 
       });
       
-      // Викликаємо завантаження пар з сервера, якщо їх ще немає в кеші для цієї сесії
-      // АБО можна просто викликати _loadEvents(), якщо ви хочете показувати тільки закешовані дані спочатку.
-      // Але для надійності краще спробувати оновити з сервера:
       await _loginWithGroup(groupToLoad!); 
     }
   }
@@ -108,7 +135,6 @@ Future<void> _loginWithGroup(String groupId) async {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Отримуємо НОВИЙ розклад з сервера
       final serverLessons = await _scheduleRepository.fetchSchedule(groupId);
       
       if (serverLessons.isEmpty) {
@@ -117,8 +143,6 @@ Future<void> _loginWithGroup(String groupId) async {
 
       final prefs = await SharedPreferences.getInstance();
 
-      // 2. Зчитуємо СТАРІ збережені дані з пам'яті телефону
-      // Це потрібно, бо змінна _events зараз порожня (ми ж вийшли з акаунту)
       List<Lesson> myUserEvents = [];
       final String? savedData = prefs.getString('user_schedule_data');
       
@@ -126,35 +150,28 @@ Future<void> _loginWithGroup(String groupId) async {
         final Map<String, dynamic> decodedData = json.decode(savedData);
         decodedData.forEach((dateStr, lessonsList) {
           final list = (lessonsList as List).map((l) => Lesson.fromMap(l)).toList();
-          // Витягуємо тільки ті події, які створив користувач (isUserCreated == true)
           myUserEvents.addAll(list.where((l) => l.isUserCreated));
         });
       }
 
-      // 3. Зберігаємо нову групу
       await prefs.setString('saved_group', groupId);
 
-      // 4. Об'єднуємо: Пари університету + Ваші події
       Map<DateTime, List<Lesson>> newEvents = {};
       
       void addToMap(Lesson lesson) {
-        // Нормалізація дати (прибираємо час)
         final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
         if (newEvents[dateKey] == null) newEvents[dateKey] = [];
         newEvents[dateKey]!.add(lesson);
       }
 
-      // Спочатку додаємо пари
       for (var lesson in serverLessons) {
         addToMap(lesson);
       }
 
-      // Тепер додаємо ваші збережені події
       for (var lesson in myUserEvents) {
         addToMap(lesson);
       }
 
-      // Сортуємо події в кожному дні за часом
       newEvents.forEach((key, list) {
         list.sort((a, b) => a.startTime.compareTo(b.startTime));
       });
@@ -164,7 +181,6 @@ Future<void> _loginWithGroup(String groupId) async {
         _events = newEvents;
       });
       
-      // 5. Перезаписуємо файл збереження з об'єднаними даними
       await _saveEvents(); 
       
       ScaffoldMessenger.of(context).showSnackBar(
@@ -186,7 +202,6 @@ Future<void> _loginWithGroup(String groupId) async {
 Future<void> _logoutGroup() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('saved_group');
-    // await prefs.remove('user_schedule_data'); // <--- ВАЖЛИВО: Закоментуйте цей рядок!
     
     setState(() {
       _userGroup = null;
@@ -195,7 +210,6 @@ Future<void> _logoutGroup() async {
     });
   }
 
-  // --- ЛОГІКА ЗБЕРЕЖЕННЯ ---
   Future<void> _saveEvents() async {
     final prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> exportData = {};
@@ -224,15 +238,12 @@ Future<void> _logoutGroup() async {
     return _events[normalizedDay] ?? [];
   }
 
-  // --- UI ---
   @override
   Widget build(BuildContext context) {
-    // ЯКЩО ГРУПИ НЕМАЄ -> ЕКРАН ВХОДУ
     if (_userGroup == null) {
       return _buildLoginScreen();
     }
 
-    // ЯКЩО Є -> КАЛЕНДАР
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -241,7 +252,7 @@ Future<void> _logoutGroup() async {
         title: Column(
           children: [
             const Text("Мій розклад", style: TextStyle(color: Colors.black87, fontSize: 14)),
-            Text("ID: $_userGroup", style: const TextStyle(color: Color(0xFF2D5A40), fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Шифр: $_userGroup", style: const TextStyle(color: Color(0xFF2D5A40), fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
         centerTitle: true,
@@ -300,13 +311,12 @@ Future<void> _logoutGroup() async {
             ),
             const SizedBox(height: 40),
             
-            // Знайдіть TextField контролер _groupController
             TextField(
               controller: _groupController,
-              keyboardType: TextInputType.text, // Можна прибрати обмеження, якщо було number
+              keyboardType: TextInputType.text, 
               decoration: InputDecoration(
-                labelText: "Назва групи",       // БУЛО: "ID групи"
-                hintText: "Наприклад: ІПЗ-33",  // БУЛО: "-4636"
+                labelText: "Назва групи",       
+                hintText: "Наприклад: ІПЗ-33", 
                 helperText: "Введіть точну назву групи як на сайті (з пробілами)",
                 // ...
               ),
@@ -335,14 +345,8 @@ Future<void> _logoutGroup() async {
       ),
     );
   }
-
-  // --- ТУТ ЗАЛИШАЮТЬСЯ ВАШІ МЕТОДИ UI (_buildCalendar, _buildEventList, _showEventDetails, _showAddEventDialog) ---
-  // Ті, що ви вже закомітили в попередньому кроці.
-  // Просто переконайтеся, що вони тут є.
   
   Widget _buildCalendar() {
-     // ... Код календаря з попереднього кроку ...
-     // (Я не дублюю його, щоб не забивати відповідь, але він тут має бути)
      return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -420,52 +424,52 @@ Widget _buildEventList() {
         return LessonCard(
           lesson: lesson,
           onTap: () => _showEventDetails(lesson),
-          // --- ПЕРЕДАЄМО ДАНІ ДЛЯ ІКОНКИ В LESSON CARD ---
           hasReminder: isReminderActive,
+          
           onReminderToggle: () async {
             if (isReminderActive) {
-              // Вимикаємо
               await NotificationService().cancelReminder(notifId);
               setState(() => _activeReminders.remove(notifId));
               _saveReminders();
               
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Нагадування скасовано', style: TextStyle(color: Colors.white)),
-                  backgroundColor: Colors.black87,
-                  duration: Duration(seconds: 1),
-                )
+                const SnackBar(content: Text('Нагадування скасовано', style: TextStyle(color: Colors.white)), backgroundColor: Colors.black87, duration: Duration(seconds: 1))
               );
             } else {
-              // Вмикаємо
-              final reminderTime = lesson.startTime.subtract(const Duration(minutes: 10));
-              
-              if (reminderTime.isBefore(DateTime.now())) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ця пара вже почалась або час минув!'))
-                );
-                return;
-              }
-
-              await NotificationService().requestPermissions();
-              await NotificationService().scheduleLessonReminder(
-                id: notifId, 
-                title: 'Скоро пара!', 
-                body: 'За 10 хвилин: ${lesson.title}', 
-                scheduledTime: reminderTime
-              );
-              
-              setState(() => _activeReminders.add(notifId));
-              _saveReminders();
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Нагадаємо о ${DateFormat('HH:mm').format(reminderTime)}', style: const TextStyle(color: Colors.white)),
-                  backgroundColor: const Color(0xFF2D5A40),
-                  duration: const Duration(seconds: 2),
-                )
-              );
+              await _setReminderTime(lesson, notifId, 10);
             }
+          },
+
+          onReminderLongPress: () {
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              builder: (sheetContext) {
+                return Container(
+                  decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(25))),
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('За скільки часу нагадати?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
+                      const SizedBox(height: 10),
+                      ...[5, 10, 30, 60].map((minutes) => ListTile(
+                        leading: const Icon(Icons.timer_outlined, color: Color(0xFF2D5A40)),
+                        title: Text('$minutes ${minutes == 60 ? "хвилин (1 година)" : "хвилин"}', style: const TextStyle(fontSize: 16)),
+                        onTap: () async {
+                          Navigator.pop(sheetContext); 
+
+                          if (isReminderActive) {
+                             await NotificationService().cancelReminder(notifId);
+                          }
+                          await _setReminderTime(lesson, notifId, minutes);
+                        },
+                      )).toList(),
+                    ],
+                  ),
+                );
+              }
+            );
           },
         );
       },
@@ -527,7 +531,6 @@ void _showAddEventDialog({Lesson? eventToEdit}) {
     final titleController = TextEditingController(text: eventToEdit?.title ?? "");
     final descController = TextEditingController(text: eventToEdit?.description ?? "");
     
-    // ОСЬ ЦІ ЗМІННІ, НА ЯКІ СВАРИВСЯ FLUTTER:
     TimeOfDay selectedStartTime = eventToEdit != null ? TimeOfDay.fromDateTime(eventToEdit.startTime) : const TimeOfDay(hour: 9, minute: 0);
     TimeOfDay selectedEndTime = eventToEdit != null ? TimeOfDay.fromDateTime(eventToEdit.endTime) : const TimeOfDay(hour: 10, minute: 0);
     LessonType selectedType = eventToEdit?.type ?? LessonType.practice;
@@ -536,7 +539,7 @@ void _showAddEventDialog({Lesson? eventToEdit}) {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder( // А ОСЬ ТУТ ЖИВЕ setModalState
+      builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Container(
           padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, top: 25, left: 20, right: 20),
           decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
@@ -553,7 +556,6 @@ void _showAddEventDialog({Lesson? eventToEdit}) {
               TextField(controller: descController, decoration: InputDecoration(labelText: "Нотатки", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), filled: true, fillColor: Colors.grey[50])),
               const SizedBox(height: 20),
               
-              // --- ОСЬ НАШ ОНОВЛЕНИЙ ROW З 24-ГОДИННИМ ФОРМАТОМ ---
               Row(
                 children: [
                   Expanded(
@@ -597,7 +599,6 @@ void _showAddEventDialog({Lesson? eventToEdit}) {
                   ),
                 ]
               ),
-              // ----------------------------------------------------
 
               const SizedBox(height: 30),
               ElevatedButton(
@@ -630,7 +631,7 @@ void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, Les
       startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute),
       endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute),
       type: type,
-      isUserCreated: true, // <-- ВАЖЛИВО: Це подія користувача
+      isUserCreated: true, 
     );
 
     setState(() {
@@ -639,7 +640,6 @@ void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, Les
       } else { 
         _events[normalizedDay] = [newLesson]; 
       }
-      // Сортуємо за часом
       _events[normalizedDay]!.sort((a, b) => a.startTime.compareTo(b.startTime));
     });
     
@@ -649,14 +649,12 @@ void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, Les
 void _deleteEvent(Lesson lesson, {bool save = true}) {
     final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
     
-    // --- Додаємо скасування нагадування ---
     final int notificationId = lesson.id.hashCode;
     if (_activeReminders.contains(notificationId)) {
       NotificationService().cancelReminder(notificationId);
       _activeReminders.remove(notificationId);
       _saveReminders();
     }
-    // ----------------------------------------
 
     setState(() {
       _events[dateKey]?.removeWhere((l) => l.id == lesson.id);

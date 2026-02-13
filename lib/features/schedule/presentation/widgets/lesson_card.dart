@@ -4,11 +4,11 @@ import '../../domain/lesson_model.dart';
 
 class LessonCard extends StatelessWidget {
   final Lesson lesson;
-  final VoidCallback? onTap; // Отримуємо функцію натискання
+  final VoidCallback? onTap; 
 
-  // ДОДАЙТЕ ЦІ ДВА РЯДКИ:
   final bool hasReminder;
   final VoidCallback? onReminderToggle;
+  final VoidCallback? onReminderLongPress; 
 
   const LessonCard({
     super.key, 
@@ -16,6 +16,7 @@ class LessonCard extends StatelessWidget {
     this.onTap,
     this.hasReminder = false,
     this.onReminderToggle,
+    this.onReminderLongPress,
   });
 
   @override
@@ -30,10 +31,9 @@ class LessonCard extends StatelessWidget {
       default: typeColor = const Color(0xFF2D5A40);
     }
 
-    // ВАЖЛИВО: Обгортаємо Container у GestureDetector
     return GestureDetector(
-      onTap: onTap, // Передаємо сюди функцію
-      behavior: HitTestBehavior.opaque, // Щоб реагувало на натискання по всій площі
+      onTap: onTap, 
+      behavior: HitTestBehavior.opaque, 
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         padding: const EdgeInsets.all(16),
@@ -78,18 +78,17 @@ class LessonCard extends StatelessWidget {
               ),
             ),
             
-            // --- ОСЬ НАША НОВА КНОПКА-ДЗВІНОЧЕК ---
             IconButton(
+              onPressed: onReminderToggle,        
+              onLongPress: onReminderLongPress,    
               icon: Icon(
                 hasReminder ? Icons.notifications_active : Icons.notifications_none,
                 color: hasReminder ? Colors.orangeAccent : Colors.grey[400],
                 size: 26,
               ),
-              onPressed: onReminderToggle, // Викликає логіку з SchedulePage
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(), // Зменшує зайві відступи навколо іконки
+              padding: const EdgeInsets.all(8.0), 
+              constraints: const BoxConstraints(), 
             ),
-            // --------------------------------------
 
           ],
         ),

@@ -9,7 +9,7 @@ class Lesson {
   final DateTime startTime;
   final DateTime endTime;
   final LessonType type;
-  final bool isUserCreated; // <-- НОВЕ ПОЛЕ
+  final bool isUserCreated;
 
   Lesson({
     required this.id,
@@ -18,10 +18,9 @@ class Lesson {
     required this.startTime,
     required this.endTime,
     required this.type,
-    this.isUserCreated = false, // За замовчуванням false (для пар з університету)
+    this.isUserCreated = false, 
   });
 
-  // Перетворюємо в Map для JSON
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -30,11 +29,10 @@ class Lesson {
       'startTime': startTime.toIso8601String(),
       'endTime': endTime.toIso8601String(),
       'type': type.index,
-      'isUserCreated': isUserCreated, // <-- Зберігаємо
+      'isUserCreated': isUserCreated, 
     };
   }
 
-  // Створюємо об'єкт з Map
   factory Lesson.fromMap(Map<String, dynamic> map) {
     return Lesson(
       id: map['id'],
@@ -43,7 +41,7 @@ class Lesson {
       startTime: DateTime.parse(map['startTime']),
       endTime: DateTime.parse(map['endTime']),
       type: LessonType.values[map['type']],
-      isUserCreated: map['isUserCreated'] ?? false, // <-- Завантажуємо (якщо немає - false)
+      isUserCreated: map['isUserCreated'] ?? false, 
     );
   }
 
