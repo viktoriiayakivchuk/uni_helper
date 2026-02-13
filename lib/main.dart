@@ -8,6 +8,8 @@ import 'features/navigation/presentation/pages/main_screen.dart';
 import 'features/social_life/data/events_seeder.dart'; 
 import 'features/social_life/data/faq_seeder.dart'; // Додай цей рядок!
 
+import 'core/services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -27,6 +29,8 @@ void main() async {
   } catch (e) {
     debugPrint("Помилка ініціалізації Firebase: $e");
   }
+
+  await NotificationService().init();
 
   runApp(const UniHelperApp());
 }

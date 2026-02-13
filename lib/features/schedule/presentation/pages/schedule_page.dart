@@ -10,6 +10,8 @@ import '../../data/schedule_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/services/notification_service.dart';
+
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
 
@@ -30,11 +32,30 @@ class _SchedulePageState extends State<SchedulePage> {
   final TextEditingController _groupController = TextEditingController();
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
 
+  Set<int> _activeReminders = {};
+  
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _loadReminders(); // <--- Додаємо виклик
     _checkUserGroup(); // Перевіряємо при старті, чи є група
+  }
+
+  // --- НОВІ МЕТОДИ ---
+  Future<void> _loadReminders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? saved = prefs.getStringList('active_reminders');
+    if (saved != null) {
+      setState(() {
+        _activeReminders = saved.map(int.parse).toSet();
+      });
+    }
+  }
+
+  Future<void> _saveReminders() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('active_reminders', _activeReminders.map((e) => e.toString()).toList());
   }
 
   // --- ЛОГІКА АВТОРИЗАЦІЇ ---
@@ -400,36 +421,129 @@ Future<void> _logoutGroup() async {
     );
   }
 
-  void _showEventDetails(Lesson lesson) {
-     // ... Код вікна деталей ...
-     showDialog(
+void _showEventDetails(Lesson lesson) {
+    // Генеруємо унікальний ID для нагадування з ID пари
+    final int notificationId = lesson.id.hashCode;
+
+    showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(lesson.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
-                const SizedBox(height: 15),
-                Row(children: [const Icon(Icons.access_time_rounded, color: Colors.orangeAccent), const SizedBox(width: 10), Text("${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))]),
-                const SizedBox(height: 10),
-                if (lesson.description.isNotEmpty) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.notes_rounded, color: Colors.grey), const SizedBox(width: 10), Expanded(child: Text(lesson.description, style: const TextStyle(fontSize: 16, color: Colors.black87)))]),
-                const SizedBox(height: 25),
-                const Divider(),
-                const SizedBox(height: 10),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    TextButton.icon(onPressed: () { _deleteEvent(lesson); Navigator.pop(context); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Видалено'))); }, icon: const Icon(Icons.delete_outline, color: Colors.redAccent), label: const Text("Видалити", style: TextStyle(color: Colors.redAccent))),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(onPressed: () { Navigator.pop(context); _showAddEventDialog(eventToEdit: lesson); }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5A40), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text("Змінити")),
-                ])
-              ],
-            ),
-          ),
+        // Використовуємо StatefulBuilder, щоб оновлювати UI кнопки всередині діалогу
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            // Перевіряємо, чи увімкнено нагадування для цієї пари
+            final bool isReminderActive = _activeReminders.contains(notificationId);
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+              backgroundColor: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(lesson.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
+                    const SizedBox(height: 15),
+                    Row(children: [const Icon(Icons.access_time_rounded, color: Colors.orangeAccent), const SizedBox(width: 10), Text("${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))]),
+                    const SizedBox(height: 10),
+                    if (lesson.description.isNotEmpty) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.notes_rounded, color: Colors.grey), const SizedBox(width: 10), Expanded(child: Text(lesson.description, style: const TextStyle(fontSize: 16, color: Colors.black87)))]),
+                    const SizedBox(height: 25),
+                    
+                    // --- ІНТЕРАКТИВНА КНОПКА НАГАДУВАННЯ ---
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          if (isReminderActive) {
+                            // ВИМИКАЄМО НАГАДУВАННЯ
+                            await NotificationService().cancelReminder(notificationId);
+                            
+                            setStateDialog(() => _activeReminders.remove(notificationId));
+                            setState(() {}); // Оновлюємо загальний стан
+                            _saveReminders();
+                            
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Нагадування скасовано'))
+                            );
+                          } else {
+                            // ВМИКАЄМО НАГАДУВАННЯ
+                            await NotificationService().requestPermissions();
+                            
+                            final reminderTime = lesson.startTime.subtract(const Duration(minutes: 10));
+                            if (reminderTime.isBefore(DateTime.now())) {
+                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ця пара вже почалась або час минув!')));
+                               return;
+                            }
+
+                            await NotificationService().scheduleLessonReminder(
+                              id: notificationId, 
+                              title: 'Скоро пара!',
+                              body: 'За 10 хвилин почнеться: ${lesson.title}',
+                              scheduledTime: reminderTime,
+                            );
+
+                            setStateDialog(() => _activeReminders.add(notificationId));
+                            setState(() {}); // Оновлюємо загальний стан
+                            _saveReminders();
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Нагадування встановлено на ${DateFormat('HH:mm').format(reminderTime)}'),
+                                backgroundColor: const Color(0xFF2D5A40),
+                              )
+                            );
+                          }
+                        },
+                        // Змінюємо іконку залежно від стану
+                        icon: Icon(
+                          isReminderActive ? Icons.notifications_active : Icons.notifications_none, 
+                          color: isReminderActive ? Colors.white : const Color(0xFF2D5A40)
+                        ),
+                        // Змінюємо текст
+                        label: Text(
+                          isReminderActive ? "Нагадування увімкнено" : "Нагадати за 10 хв", 
+                          style: TextStyle(color: isReminderActive ? Colors.white : const Color(0xFF2D5A40))
+                        ),
+                        // Змінюємо стиль (заливка, якщо активно)
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: isReminderActive ? const Color(0xFF2D5A40) : Colors.transparent,
+                          side: const BorderSide(color: Color(0xFF2D5A40)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    // -----------------------------------
+
+                    const SizedBox(height: 15),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        TextButton.icon(
+                          onPressed: () { 
+                            _deleteEvent(lesson); 
+                            Navigator.pop(context); 
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Видалено'))); 
+                          }, 
+                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent), 
+                          label: const Text("Видалити", style: TextStyle(color: Colors.redAccent))
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () { 
+                            Navigator.pop(context); 
+                            _showAddEventDialog(eventToEdit: lesson); 
+                          }, 
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5A40), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), 
+                          icon: const Icon(Icons.edit_outlined, size: 18), 
+                          label: const Text("Змінити")
+                        ),
+                    ])
+                  ],
+                ),
+              ),
+            );
+          }
         );
       },
     );
@@ -517,8 +631,18 @@ void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, Les
     _saveEvents();
   }
 
-  void _deleteEvent(Lesson lesson, {bool save = true}) {
+void _deleteEvent(Lesson lesson, {bool save = true}) {
     final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
+    
+    // --- Додаємо скасування нагадування ---
+    final int notificationId = lesson.id.hashCode;
+    if (_activeReminders.contains(notificationId)) {
+      NotificationService().cancelReminder(notificationId);
+      _activeReminders.remove(notificationId);
+      _saveReminders();
+    }
+    // ----------------------------------------
+
     setState(() {
       _events[dateKey]?.removeWhere((l) => l.id == lesson.id);
       if (save) _saveEvents();
