@@ -12,6 +12,7 @@ import '../../../auth/presentation/pages/complete_profile_page.dart';
 import '../../../resources/presentation/pages/resources_page.dart'; 
 import '../../../support/presentation/pages/support_page.dart';
 import '../../../support/data/motivation_data.dart';
+import '../../../chatbot/presentation/pages/chatbot_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -27,13 +28,7 @@ class _MainScreenState extends State<MainScreen> {
   // Основні вкладки BottomNavigationBar
   List<Widget> get _pages => [
         const SchedulePage(),
-        const Center(
-          child: Text(
-            'Чат-бот UniHelper\n(Ставимо запитання тут)', 
-            textAlign: TextAlign.center, 
-            style: TextStyle(color: Color(0xFF2D5A40))
-          )
-        ),
+        const ChatbotPage(),
         const GlossaryPage(),
         _buildProfileTab(),
       ];
