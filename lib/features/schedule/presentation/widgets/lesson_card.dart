@@ -6,10 +6,16 @@ class LessonCard extends StatelessWidget {
   final Lesson lesson;
   final VoidCallback? onTap; // Отримуємо функцію натискання
 
+  // ДОДАЙТЕ ЦІ ДВА РЯДКИ:
+  final bool hasReminder;
+  final VoidCallback? onReminderToggle;
+
   const LessonCard({
     super.key, 
     required this.lesson,
     this.onTap,
+    this.hasReminder = false,
+    this.onReminderToggle,
   });
 
   @override
@@ -71,7 +77,20 @@ class LessonCard extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.grey[300]), 
+            
+            // --- ОСЬ НАША НОВА КНОПКА-ДЗВІНОЧЕК ---
+            IconButton(
+              icon: Icon(
+                hasReminder ? Icons.notifications_active : Icons.notifications_none,
+                color: hasReminder ? Colors.orangeAccent : Colors.grey[400],
+                size: 26,
+              ),
+              onPressed: onReminderToggle, // Викликає логіку з SchedulePage
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(), // Зменшує зайві відступи навколо іконки
+            ),
+            // --------------------------------------
+
           ],
         ),
       ),
