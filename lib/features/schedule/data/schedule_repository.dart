@@ -100,13 +100,23 @@ class ScheduleRepository {
     return lessons;
   }
   
-  Lesson _createLessonFromCell(Element cell, DateTime date, String startStr, String endStr) {
+Lesson _createLessonFromCell(Element cell, DateTime date, String startStr, String endStr) {
     String description = "";
     String title = "Пара";
     bool isRemote = false;
 
     if (cell.querySelector('.remote_work') != null || cell.text.contains('дист.')) {
       isRemote = true;
+    }
+
+    // --- ДОДАНО: Витягуємо посилання з HTML-тегів <a> ---
+    List<String> extractedLinks = [];
+    var aTags = cell.querySelectorAll('a');
+    for (var a in aTags) {
+      var href = a.attributes['href'];
+      if (href != null && href.startsWith('http')) {
+        extractedLinks.add(href);
+      }
     }
 
     String cellHtml = cell.innerHtml.replaceAll('<br>', '\n').replaceAll('&nbsp;', ' ');
@@ -118,7 +128,20 @@ class ScheduleRepository {
     String subjectCandidate = "";
 
     for (var line in lines) {
-      if (line.contains('дист.') || line == 'Link' || line.contains('http')) continue;
+      // Ігноруємо непотрібний текст
+      if (line.contains('дист.') || line == 'Link') continue;
+
+      // --- ДОДАНО: Перевірка і додавання посилань, що залишились у тексті ---
+      if (line.contains('http')) {
+        // Відкидаємо три крапки для перевірки, якщо сайт скоротив лінк
+        String cleanLine = line.replaceAll('...', '').trim();
+        bool alreadyExtracted = extractedLinks.any((extractedLink) => extractedLink.contains(cleanLine));
+        
+        if (!alreadyExtracted) {
+          extractedLinks.add(line);
+        }
+        continue;
+      }
 
       if (line.toLowerCase().contains('ауд.')) {
         room = line;
@@ -137,6 +160,11 @@ class ScheduleRepository {
     if (isRemote) descParts.add("💻 Онлайн");
     if (room.isNotEmpty) descParts.add("📍 $room");
     if (teacher.isNotEmpty) descParts.add("👨‍🏫 $teacher");
+    
+    // --- ДОДАНО: Додаємо всі знайдені посилання до опису ---
+    for (var link in extractedLinks) {
+      descParts.add("🔗 $link");
+    }
     
     description = descParts.join('\n');
 

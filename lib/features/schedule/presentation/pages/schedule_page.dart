@@ -12,6 +12,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/services/notification_service.dart';
 
+import 'package:flutter/services.dart';
+
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
 
@@ -477,6 +479,11 @@ Widget _buildEventList() {
   }
 
 void _showEventDetails(Lesson lesson) {
+    // 1. Шукаємо посилання в описі за допомогою регулярного виразу
+    final RegExp urlRegExp = RegExp(r'(https?:\/\/[^\s]+)');
+    final match = urlRegExp.firstMatch(lesson.description);
+    final String? extractedUrl = match?.group(0);
+
     showDialog(
       context: context,
       builder: (context) {
@@ -493,11 +500,58 @@ void _showEventDetails(Lesson lesson) {
                 const SizedBox(height: 15),
                 Row(children: [const Icon(Icons.access_time_rounded, color: Colors.orangeAccent), const SizedBox(width: 10), Text("${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))]),
                 const SizedBox(height: 10),
-                if (lesson.description.isNotEmpty) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.notes_rounded, color: Colors.grey), const SizedBox(width: 10), Expanded(child: Text(lesson.description, style: const TextStyle(fontSize: 16, color: Colors.black87)))]),
-                const SizedBox(height: 25),
                 
+                // 2. Змінено: Text -> SelectableText (тепер текст можна затиснути і виділити)
+                if (lesson.description.isNotEmpty) 
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start, 
+                    children: [
+                      const Icon(Icons.notes_rounded, color: Colors.grey), 
+                      const SizedBox(width: 10), 
+                      Expanded(
+                        child: SelectableText(
+                          lesson.description, 
+                          style: const TextStyle(fontSize: 16, color: Colors.black87)
+                        )
+                      )
+                    ]
+                  ),
+                
+                // 3. Додано: Якщо є посилання, з'являється зручна кнопка
+                if (extractedUrl != null) ...[
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: extractedUrl));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🔗 Посилання скопійовано!'),
+                              backgroundColor: Color(0xFF2D5A40),
+                              duration: Duration(seconds: 2),
+                            )
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 20),
+                      label: const Text("Скопіювати посилання", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent.withOpacity(0.1),
+                        foregroundColor: Colors.blueAccent,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  )
+                ],
+
+                const SizedBox(height: 25),
                 const Divider(),
                 const SizedBox(height: 10),
+                
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                     TextButton.icon(
                       onPressed: () { 
@@ -526,7 +580,6 @@ void _showEventDetails(Lesson lesson) {
       },
     );
   }
-
 void _showAddEventDialog({Lesson? eventToEdit}) {
     final titleController = TextEditingController(text: eventToEdit?.title ?? "");
     final descController = TextEditingController(text: eventToEdit?.description ?? "");
