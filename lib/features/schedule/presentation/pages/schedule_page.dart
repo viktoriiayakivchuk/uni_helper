@@ -239,23 +239,21 @@ Future<void> _logoutGroup() async {
             ),
             const SizedBox(height: 15),
             Text(
-              "Введіть ID вашої групи (наприклад -4636), щоб завантажити розклад.",
+              "Введіть шифр вашої групи, щоб завантажити розклад.",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 40),
             
+            // Знайдіть TextField контролер _groupController
             TextField(
               controller: _groupController,
-              keyboardType: TextInputType.text, // Щоб ввести мінус "-"
+              keyboardType: TextInputType.text, // Можна прибрати обмеження, якщо було number
               decoration: InputDecoration(
-                labelText: "ID групи",
-                hintText: "Наприклад: -4636",
-                helperText: "Цей ID можна знайти в посиланні на сайті розкладу",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                prefixIcon: const Icon(Icons.numbers_rounded),
-                filled: true,
-                fillColor: Colors.grey[50],
+                labelText: "Назва групи",       // БУЛО: "ID групи"
+                hintText: "Наприклад: ІПЗ-33",  // БУЛО: "-4636"
+                helperText: "Введіть точну назву групи як на сайті (з пробілами)",
+                // ...
               ),
             ),
             

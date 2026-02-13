@@ -6,43 +6,55 @@ import 'package:intl/intl.dart';
 import '../domain/lesson_model.dart';
 
 class ScheduleRepository {
-  // Базовий URL скрипта
-  final String baseUrl = 'https://asu-srv.pnu.edu.ua/cgi-bin/timetable.cgi';
+  // Базовий URL з параметром n=700 (як у формі на сайті)
+  final String baseUrl = 'https://asu-srv.pnu.edu.ua/cgi-bin/timetable.cgi?n=700';
 
-  // Метод приймає ID групи (наприклад "-4636")
-  Future<List<Lesson>> fetchSchedule(String groupId) async {
+  // ВАЖЛИВО: Тепер цей метод очікує НАЗВУ групи (напр. "ІПЗ-33"), а не ID
+  Future<List<Lesson>> fetchSchedule(String groupName) async {
     try {
-      // 1. Формуємо дати: від сьогодні до +30 днів
-      // ВАЖЛИВО: Якщо зараз канікули, можна поставити хардкод дати для тесту, 
-      // але для релізу залишаємо DateTime.now()
       final now = DateTime.now();
-      // final now = DateTime(2026, 2, 12); // Розкоментуйте, якщо хочете тестувати 2026 рік
-      
-      final futureDate = now.add(const Duration(days: 30)); 
+      // Завантажуємо розклад на весь семестр (120 днів)
+      final futureDate = now.add(const Duration(days: 120)); 
       
       final dateFormat = DateFormat('dd.MM.yyyy');
       final sdate = dateFormat.format(now);
       final edate = dateFormat.format(futureDate);
 
-      // 2. Формуємо URL для GET запиту (це те, що спрацювало в тесті)
-      // n=700 - це стандартний ID для ПНУ (схоже на потік або факультет)
-      final String url = '$baseUrl?n=700&group=$groupId&sdate=$sdate&edate=$edate';
-      
-      print('Завантаження: $url');
+      print('📅 Запит розкладу для групи: "$groupName" на період $sdate - $edate');
 
-      // 3. Виконуємо запит
-      final response = await http.get(
-        Uri.parse(url),
+      // 1. КОДУВАННЯ НАЗВИ ГРУПИ (UTF-8 -> Windows-1251)
+      // Це найважливіший крок. Сервер не розуміє UTF-8.
+      List<int> groupBytes = windows1251.encode(groupName);
+      
+      // Перетворюємо байти у формат %XX (URL-encoded)
+      String encodedGroup = groupBytes.map((b) => '%${b.toRadixString(16).toUpperCase()}').join('');
+      
+      // 2. ФОРМУВАННЯ ТІЛА ЗАПИТУ (Raw String)
+      // Формуємо рядок вручну, щоб контролювати кодування
+      String body = "n=700"
+          "&faculty=0"         // "Оберіть факультет" (0 - щоб шукати скрізь)
+          "&course=0"          // "Оберіть курс"
+          "&group=$encodedGroup" // Наша закодована назва
+          "&sdate=$sdate"
+          "&edate=$edate"
+          "&teacher=";
+
+      // 3. ВІДПРАВКА POST ЗАПИТУ
+      final response = await http.post(
+        Uri.parse(baseUrl),
         headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          // Referer обов'язковий, бо сервер перевіряє, чи прийшли ми з його сайту
+          'Referer': 'https://asu-srv.pnu.edu.ua/cgi-bin/timetable.cgi?n=700',
+          'Origin': 'https://asu-srv.pnu.edu.ua',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
+        body: body,
       );
 
       if (response.statusCode == 200) {
-        // 4. Декодуємо Windows-1251
+        // Декодуємо відповідь (вона теж у Windows-1251)
         String htmlBody = windows1251.decode(response.bodyBytes);
-        
-        // 5. Парсимо
         return _parseHtml(htmlBody);
       } else {
         throw Exception('Помилка сервера: ${response.statusCode}');
@@ -58,13 +70,19 @@ class ScheduleRepository {
     List<Lesson> lessons = [];
 
     var dayBlocks = document.querySelectorAll('div.col-md-6');
+    
+    // Регулярка для пошуку дати (напр. 12.02.2024)
+    final dateRegExp = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})');
 
     for (var block in dayBlocks) {
-      // Заголовок дати
       var header = block.querySelector('h4');
       if (header == null) continue;
 
-      String rawDate = header.text.trim().split(' ')[0]; 
+      // Шукаємо дату в заголовку (ігноруємо назву дня тижня)
+      final match = dateRegExp.firstMatch(header.text.trim());
+      if (match == null) continue;
+
+      String rawDate = match.group(0)!; 
       DateTime? date = _parseDate(rawDate);
       if (date == null) continue;
 
@@ -72,13 +90,11 @@ class ScheduleRepository {
       for (var row in rows) {
         var cells = row.querySelectorAll('td');
         
-        // Перевірка на наявність пари
         if (cells.length >= 3) {
           var contentCell = cells[2];
           if (contentCell.text.trim().isNotEmpty) {
             var timeCell = cells[1];
             
-            // Час: "09:00<br>10:20" -> "09:00", "10:20"
             String timeHtml = timeCell.innerHtml;
             List<String> times = timeHtml.replaceAll('<br>', '-').split('-');
             
@@ -92,11 +108,15 @@ class ScheduleRepository {
         }
       }
     }
+    
+    print("✅ Успішно завантажено: ${lessons.length} пар");
     return lessons;
   }
 
+  // --- (Решта методів без змін: _createLessonFromCell, _parseDate, _looksLikeTeacher) ---
+  // Скопіюйте їх зі старого файлу або з попередніх повідомлень
+  
   Lesson _createLessonFromCell(Element cell, DateTime date, String startStr, String endStr) {
-    // Витягуємо дані з HTML комірки
     String description = "";
     String title = "Пара";
     bool isRemote = false;
@@ -105,7 +125,6 @@ class ScheduleRepository {
       isRemote = true;
     }
 
-    // Чистимо текст
     String cellHtml = cell.innerHtml.replaceAll('<br>', '\n').replaceAll('&nbsp;', ' ');
     String cellTextClean = parser.parse(cellHtml).documentElement!.text;
     List<String> lines = cellTextClean.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
@@ -140,7 +159,7 @@ class ScheduleRepository {
     LessonType type = LessonType.practice;
     if (title.toLowerCase().contains('(л)')) type = LessonType.lecture;
     if (title.toLowerCase().contains('(лаб)')) type = LessonType.lab;
-    if (title.toLowerCase().contains('екз')) type = LessonType.exam;
+    if (title.toLowerCase().contains('екз') || title.toLowerCase().contains('консульт')) type = LessonType.exam;
 
     final startParts = startStr.split(':').map(int.parse).toList();
     final endParts = endStr.split(':').map(int.parse).toList();
