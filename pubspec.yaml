@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Робота з PDF
+  pdfx: ^2.5.0
+  path_provider: ^2.1.2 
+
   # Основні пакети Firebase
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
@@ -22,14 +26,17 @@ dependencies:
   html: ^0.15.4
   windows1251: ^2.0.1  
   
-  # Додаткові корисні пакети для нашого ТЗ
+  # Додаткові пакети
   cupertino_icons: ^1.0.6
   google_sign_in: ^6.2.1
+  
   intl: ^0.20.2 # Для форматування дати у розкладі
   url_launcher: ^6.3.2
   table_calendar: ^3.1.2 # Найкращий віджет календаря для Flutter
   flutter_local_notifications: ^18.0.1 # Для нагадувань
   timezone: ^0.10.0 # Для правильної роботи часу сповіщень
+  shared_preferences: ^2.3.2 
+  share_plus: ^10.1.0 # Залишено одну стабільну версію
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +46,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Якщо у вас будуть картинки, розкоментуйте це пізніше:
-  # assets:
-  #   - assets/images/
+  assets:
+    - assets/data/
+    - assets/docs/indyvidual_grafik.pdf
+    - assets/docs/stypendia.pdf
+    - assets/docs/ugoda_praktyka.pdf
+    - assets/docs/student_card.pdf # Додано новий актив
+    - assets/docs/dormitory.pdf    # Додано новий актив
