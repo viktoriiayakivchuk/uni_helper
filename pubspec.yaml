@@ -19,12 +19,22 @@ dependencies:
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.1
   cloud_firestore: ^5.6.2
+  shared_preferences: ^2.3.5
+  
+  # Для парсингу HTML
+  http: ^1.2.0
+  html: ^0.15.4
+  windows1251: ^2.0.1  
   
   # Додаткові пакети
   cupertino_icons: ^1.0.6
   google_sign_in: ^6.2.1
-  intl: ^0.20.2 
-  url_launcher: ^6.3.2 
+  
+  intl: ^0.20.2 # Для форматування дати у розкладі
+  url_launcher: ^6.3.2
+  table_calendar: ^3.1.2 # Найкращий віджет календаря для Flutter
+  flutter_local_notifications: ^18.0.1 # Для нагадувань
+  timezone: ^0.10.0 # Для правильної роботи часу сповіщень
   shared_preferences: ^2.3.2 
   share_plus: ^10.1.0 # Залишено одну стабільну версію
 

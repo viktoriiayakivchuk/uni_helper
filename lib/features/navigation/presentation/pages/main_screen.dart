@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/data/auth_service.dart';
-import '../../../schedule/presentation/pages/pages/schedule_page.dart';
+import '../../../schedule/presentation/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
 import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
 import 'package:uni_helper/features/adaptation/presentation/pages/adaptation_plan_page.dart';
@@ -15,6 +15,7 @@ import '../../../auth/presentation/pages/complete_profile_page.dart';
 import '../../../resources/presentation/pages/resources_page.dart';
 import '../../../support/presentation/pages/support_page.dart';
 import '../../../support/data/motivation_data.dart';
+import '../../../chatbot/presentation/pages/chatbot_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,10 +30,7 @@ class _MainScreenState extends State<MainScreen> {
 
   List<Widget> get _pages => [
         const SchedulePage(),
-        const Center(
-            child: Text('Чат-бот UniHelper\n(Ставимо запитання тут)',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF2D5A40)))),
+        const ChatbotPage(),
         const GlossaryPage(),
         _buildProfileTab(),
       ];
