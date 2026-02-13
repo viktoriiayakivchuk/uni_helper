@@ -47,42 +47,73 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
 
-  Future<void> _loginWithGroup(String groupId) async {
+Future<void> _loginWithGroup(String groupId) async {
     if (groupId.isEmpty) return;
     
     setState(() => _isLoading = true);
 
     try {
-      // 1. Отримуємо розклад через репозиторій
-      final lessons = await _scheduleRepository.fetchSchedule(groupId);
+      // 1. Отримуємо НОВИЙ розклад з сервера
+      final serverLessons = await _scheduleRepository.fetchSchedule(groupId);
       
-      if (lessons.isEmpty) {
+      if (serverLessons.isEmpty) {
         throw Exception("Пар не знайдено. Перевірте ID групи (напр. -4636)");
       }
 
-      // 2. Зберігаємо ID групи
       final prefs = await SharedPreferences.getInstance();
+
+      // 2. Зчитуємо СТАРІ збережені дані з пам'яті телефону
+      // Це потрібно, бо змінна _events зараз порожня (ми ж вийшли з акаунту)
+      List<Lesson> myUserEvents = [];
+      final String? savedData = prefs.getString('user_schedule_data');
+      
+      if (savedData != null) {
+        final Map<String, dynamic> decodedData = json.decode(savedData);
+        decodedData.forEach((dateStr, lessonsList) {
+          final list = (lessonsList as List).map((l) => Lesson.fromMap(l)).toList();
+          // Витягуємо тільки ті події, які створив користувач (isUserCreated == true)
+          myUserEvents.addAll(list.where((l) => l.isUserCreated));
+        });
+      }
+
+      // 3. Зберігаємо нову групу
       await prefs.setString('saved_group', groupId);
 
-      // 3. Конвертуємо список уроків у формат календаря Map<DateTime, List>
+      // 4. Об'єднуємо: Пари університету + Ваші події
       Map<DateTime, List<Lesson>> newEvents = {};
       
-      // Додаємо нові пари (замінюючи старі на ці дні)
-      for (var lesson in lessons) {
+      void addToMap(Lesson lesson) {
+        // Нормалізація дати (прибираємо час)
         final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
         if (newEvents[dateKey] == null) newEvents[dateKey] = [];
         newEvents[dateKey]!.add(lesson);
       }
+
+      // Спочатку додаємо пари
+      for (var lesson in serverLessons) {
+        addToMap(lesson);
+      }
+
+      // Тепер додаємо ваші збережені події
+      for (var lesson in myUserEvents) {
+        addToMap(lesson);
+      }
+
+      // Сортуємо події в кожному дні за часом
+      newEvents.forEach((key, list) {
+        list.sort((a, b) => a.startTime.compareTo(b.startTime));
+      });
 
       setState(() {
         _userGroup = groupId;
         _events = newEvents;
       });
       
-      await _saveEvents(); // Зберігаємо розклад локально
+      // 5. Перезаписуємо файл збереження з об'єднаними даними
+      await _saveEvents(); 
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Успішно завантажено ${lessons.length} пар!')),
+        SnackBar(content: Text('Розклад оновлено! Ваші події (${myUserEvents.length}) збережено.')),
       );
       
     } catch (e) {
@@ -97,10 +128,11 @@ class _SchedulePageState extends State<SchedulePage> {
     }
   }
   
-  Future<void> _logoutGroup() async {
+Future<void> _logoutGroup() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('saved_group');
-    await prefs.remove('user_schedule_data'); // Очищаємо кеш розкладу
+    // await prefs.remove('user_schedule_data'); // <--- ВАЖЛИВО: Закоментуйте цей рядок!
+    
     setState(() {
       _userGroup = null;
       _events = {}; 
@@ -425,14 +457,31 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
-  void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, LessonType type) {
+void _addNewEvent(String title, String desc, TimeOfDay start, TimeOfDay end, LessonType type) {
     if (_selectedDay == null) return;
+    
     final normalizedDay = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
-    final newLesson = Lesson(id: DateTime.now().toString(), title: title, description: desc, startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute), endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute), type: type);
+    
+    final newLesson = Lesson(
+      id: DateTime.now().toString(),
+      title: title,
+      description: desc,
+      startTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, start.hour, start.minute),
+      endTime: DateTime(normalizedDay.year, normalizedDay.month, normalizedDay.day, end.hour, end.minute),
+      type: type,
+      isUserCreated: true, // <-- ВАЖЛИВО: Це подія користувача
+    );
+
     setState(() {
-      if (_events[normalizedDay] != null) { _events[normalizedDay]!.add(newLesson); } else { _events[normalizedDay] = [newLesson]; }
+      if (_events[normalizedDay] != null) { 
+        _events[normalizedDay]!.add(newLesson); 
+      } else { 
+        _events[normalizedDay] = [newLesson]; 
+      }
+      // Сортуємо за часом
       _events[normalizedDay]!.sort((a, b) => a.startTime.compareTo(b.startTime));
     });
+    
     _saveEvents();
   }
 
