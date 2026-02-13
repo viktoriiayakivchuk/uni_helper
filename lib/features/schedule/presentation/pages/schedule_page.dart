@@ -553,7 +553,19 @@ void _showAddEventDialog({Lesson? eventToEdit}) {
               const SizedBox(height: 20),
               TextField(controller: titleController, decoration: InputDecoration(labelText: "Що плануєте? *", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), filled: true, fillColor: Colors.grey[50])),
               const SizedBox(height: 15),
-              TextField(controller: descController, decoration: InputDecoration(labelText: "Нотатки", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), filled: true, fillColor: Colors.grey[50])),
+              TextField(
+                controller: descController,
+                maxLines: 5,        // Дозволяє розширюватися до 5 рядків
+                minLines: 3,        // Поле відразу буде високим (на 3 рядки)
+                keyboardType: TextInputType.multiline,
+                decoration: InputDecoration(
+                  labelText: "Нотатки", 
+                  alignLabelWithHint: true, // Переносить назву "Нотатки" в лівий верхній кут
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)), 
+                  filled: true, 
+                  fillColor: Colors.grey[50]
+                ),
+              ),
               const SizedBox(height: 20),
               
               Row(
