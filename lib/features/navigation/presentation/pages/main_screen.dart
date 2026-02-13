@@ -1,0 +1,421 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../auth/data/auth_service.dart';
+import '../../../schedule/presentation/pages/pages/schedule_page.dart';
+import '../../../glossary/presentation/pages/glossary_page.dart';
+import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
+import 'package:uni_helper/features/adaptation/presentation/pages/adaptation_plan_page.dart';
+// ДОДАНО: Імпорт сторінки путівника по документах
+import 'package:uni_helper/features/documents/presentation/pages/documents_page.dart';
+import '../../../contacts/presentation/pages/contacts_page.dart';
+import '../../../auth/presentation/pages/login_page.dart';
+import '../../../auth/presentation/pages/complete_profile_page.dart';
+import '../../../resources/presentation/pages/resources_page.dart';
+import '../../../support/presentation/pages/support_page.dart';
+import '../../../support/data/motivation_data.dart';
+
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
+
+  @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  int _selectedIndex = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  List<Widget> get _pages => [
+        const SchedulePage(),
+        const Center(
+            child: Text('Чат-бот UniHelper\n(Ставимо запитання тут)',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF2D5A40)))),
+        const GlossaryPage(),
+        _buildProfileTab(),
+      ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  Widget _buildDailyQuote() {
+    final int dayOfMonth = DateTime.now().day;
+    final String quote = MotivationData
+        .dailyQuotes[dayOfMonth % MotivationData.dailyQuotes.length];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.format_quote_rounded,
+              color: Color(0xFF2D5A40), size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("ПОРАДА ДНЯ",
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                        letterSpacing: 1.2)),
+                const SizedBox(height: 4),
+                Text(quote,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: Color(0xFF2D5A40))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileTab() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return LoginPage(onLoginSuccess: () => setState(() {}));
+    }
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+              child: CircularProgressIndicator(color: Color(0xFF2D5A40)));
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return CompleteProfilePage(onSaved: () => setState(() {}));
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        if (data['faculty'] == null || data['group'] == null) {
+          return CompleteProfilePage(onSaved: () => setState(() {}));
+        }
+
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(25),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                    ),
+                    child: Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: const Color(0xFF2D5A40),
+                          backgroundImage: user.photoURL != null
+                              ? NetworkImage(user.photoURL!)
+                              : null,
+                          child: user.photoURL == null
+                              ? const Icon(Icons.person,
+                                  size: 50, color: Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(height: 15),
+                        Text(user.displayName ?? 'Студент ПНУ',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2D5A40))),
+                        const SizedBox(height: 5),
+                        Text(user.email ?? '',
+                            style: TextStyle(
+                                color: Colors.black.withOpacity(0.5),
+                                fontSize: 14)),
+                        const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Divider(color: Colors.white54)),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildMiniStat(
+                                "КУРС", data['course']?.toString() ?? "-"),
+                            _buildMiniStat("ГРУПА", data['group'] ?? "-"),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              _buildDailyQuote(),
+              _buildSimpleInfoCard(
+                  Icons.account_balance_rounded, "Факультет", data['faculty']),
+              const SizedBox(height: 15),
+              TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => CompleteProfilePage(
+                              onSaved: () => setState(() {}))));
+                },
+                icon: const Icon(Icons.edit_note_rounded,
+                    color: Color(0xFF2D5A40)),
+                label: const Text("Редагувати дані профілю",
+                    style: TextStyle(
+                        color: Color(0xFF2D5A40), fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(height: 25),
+              _buildLogoutButton(),
+              const SizedBox(height: 120),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value) {
+    return Column(
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        const SizedBox(height: 4),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D5A40))),
+      ],
+    );
+  }
+
+  Widget _buildSimpleInfoCard(IconData icon, String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF2D5A40)),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.black54)),
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return TextButton.icon(
+      onPressed: () async {
+        await AuthService().signOut();
+        setState(() {});
+      },
+      icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
+      label: const Text("ВИЙТИ З АКАУНТА / ЗМІНИТИ КОРИСТУВАЧА",
+          style:
+              TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+      style: TextButton.styleFrom(
+        backgroundColor: Colors.redAccent.withOpacity(0.05),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      extendBody: true,
+      drawer: _buildSoftUIDrawer(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text('UniHelper',
+            style: TextStyle(
+                color: Color(0xFF2D5A40), fontWeight: FontWeight.bold)),
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded, color: Color(0xFF2D5A40)),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF0F4F1), Color(0xFFD9E8DD)],
+              ),
+            ),
+          ),
+          IndexedStack(index: _selectedIndex, children: _pages),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildSoftUIDrawer() {
+    return Drawer(
+      backgroundColor: const Color(0xFFF0F4F1),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Color(0xFF2D5A40)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: const [
+                Text('UniHelper',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold)),
+                Text('Додаткові сервіси',
+                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+              ],
+            ),
+          ),
+          _drawerItem(Icons.map_outlined, 'Карта університету',
+              () => Navigator.pop(context)),
+
+          _drawerItem(Icons.celebration_outlined, 'Соціальне життя', () {
+            Navigator.pop(context);
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const SocialLifePage()));
+          }),
+
+          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації',
+              () {
+            Navigator.pop(context);
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const AdaptationPlanPage()));
+          }),
+
+          // ОНОВЛЕНО: Перехід на сторінку Путівника по документах
+          _drawerItem(Icons.description_outlined, 'Путівник по документах', () {
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const DocumentsPage()));
+          }),
+
+          _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const SupportPage()));
+          }),
+          const Divider(),
+          _drawerItem(Icons.link, 'Офіційні ресурси', () {
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const ResourcesPage()));
+          }),
+          _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
+            Navigator.pop(context);
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const ContactsPage()));
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF2D5A40)),
+      title: Text(title,
+          style: const TextStyle(
+              color: Color(0xFF2D5A40), fontWeight: FontWeight.w500)),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 25),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 20,
+                offset: const Offset(0, 10))
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              backgroundColor: Colors.white.withOpacity(0.3),
+              selectedItemColor: const Color(0xFF2D5A40),
+              unselectedItemColor: Colors.black38,
+              elevation: 0,
+              type: BottomNavigationBarType.fixed,
+              items: const [
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.calendar_today_rounded), label: 'Розклад'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.smart_toy_rounded), label: 'Бот'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.menu_book_rounded), label: 'Словник'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person_rounded), label: 'Профіль'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
