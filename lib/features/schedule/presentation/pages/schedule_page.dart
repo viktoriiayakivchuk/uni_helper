@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/lesson_model.dart';
 import '../widgets/lesson_card.dart';
 import '../../data/schedule_repository.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -37,13 +39,45 @@ class _SchedulePageState extends State<SchedulePage> {
 
   // --- ЛОГІКА АВТОРИЗАЦІЇ ---
   Future<void> _checkUserGroup() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _userGroup = prefs.getString('saved_group');
-    });
+    String? groupToLoad;
 
-    if (_userGroup != null) {
-      _loadEvents(); // Група є -> вантажимо події
+    // 1. Спершу шукаємо групу в профілі Firebase
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (doc.exists && doc.data()!.containsKey('group')) {
+          final String? dbGroup = doc.data()!['group'];
+          if (dbGroup != null && dbGroup.trim().isNotEmpty) {
+            groupToLoad = dbGroup;
+            print("✅ Групу підтягнуто з Firebase: $groupToLoad");
+          }
+        }
+      }
+    } catch (e) {
+      print("Помилка отримання групи з Firebase: $e");
+    }
+
+    // 2. Якщо в Firebase порожньо (або немає інтернету/юзер гість) - беремо з пам'яті
+    if (groupToLoad == null || groupToLoad.isEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      groupToLoad = prefs.getString('saved_group');
+      if (groupToLoad != null) {
+        print("📁 Групу підтягнуто з локального кешу: $groupToLoad");
+      }
+    }
+
+    // 3. Якщо групу знайдено хоч десь — завантажуємо розклад
+    if (groupToLoad != null && groupToLoad.isNotEmpty) {
+      setState(() {
+        _userGroup = groupToLoad;
+        _groupController.text = groupToLoad!; // Заповнюємо поле вводу для наочності (якщо потрібно)
+      });
+      
+      // Викликаємо завантаження пар з сервера, якщо їх ще немає в кеші для цієї сесії
+      // АБО можна просто викликати _loadEvents(), якщо ви хочете показувати тільки закешовані дані спочатку.
+      // Але для надійності краще спробувати оновити з сервера:
+      await _loginWithGroup(groupToLoad!); 
     }
   }
 
@@ -57,7 +91,7 @@ Future<void> _loginWithGroup(String groupId) async {
       final serverLessons = await _scheduleRepository.fetchSchedule(groupId);
       
       if (serverLessons.isEmpty) {
-        throw Exception("Пар не знайдено. Перевірте ID групи (напр. -4636)");
+        throw Exception("Пар не знайдено. Перевірте шифр групи (напр. ІПЗ -33)");
       }
 
       final prefs = await SharedPreferences.getInstance();
