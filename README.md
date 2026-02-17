@@ -7,7 +7,7 @@
 ## 📸 Скріншоти додатку
 <table>
   <tr>
-    <td><img src="screenshots/main_menu.png" width="200" alt="Головне меню"/></td>
+    <td><img src="screenshots/menu.png" width="200" alt="Головне меню"/></td>
     <td><img src="screenshots/schedule.png" width="200" alt="Розклад"/></td>
     <td><img src="screenshots/glossary.png" width="200" alt="Словник"/></td>
     <td><img src="screenshots/adaptation.png" width="200" alt="Адаптація"/></td>
