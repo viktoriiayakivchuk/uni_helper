@@ -305,15 +305,23 @@ class _MainScreenState extends State<MainScreen> {
             decoration: const BoxDecoration(color: Color(0xFF2D5A40)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: const [
-                Text('UniHelper',
+              children: [
+                Image.asset(
+                  'assets/icon/app_icon.png',
+                  height: 60,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.school_rounded,
+                      color: Colors.white,
+                      size: 60),
+                ),
+                const SizedBox(height: 12),
+                const Text('UniHelper КНУВС',
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 24,
+                        fontSize: 22,
                         fontWeight: FontWeight.bold)),
-                Text('Додаткові сервіси',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                const Text('Твій персональний помічник',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),
@@ -337,7 +345,6 @@ class _MainScreenState extends State<MainScreen> {
                     builder: (context) => const AdaptationPlanPage()));
           }),
 
-          // ОНОВЛЕНО: Перехід на сторінку Путівника по документах
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () {
             Navigator.pop(context);
             Navigator.push(context,

@@ -35,19 +35,26 @@ dependencies:
   table_calendar: ^3.1.2 # Найкращий віджет календаря для Flutter
   flutter_local_notifications: ^18.0.1 # Для нагадувань
   timezone: ^0.10.0 # Для правильної роботи часу сповіщень
-  shared_preferences: ^2.3.2 
   share_plus: ^10.1.0 # Залишено одну стабільну версію
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#ffffff"
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/data/
+    - assets/icon/
     - assets/docs/indyvidual_grafik.pdf
     - assets/docs/stypendia.pdf
     - assets/docs/ugoda_praktyka.pdf
