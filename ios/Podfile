@@ -1,7 +1,5 @@
-# Uncomment this line to define a global platform for your project
  platform :ios, '13.0'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -29,8 +27,10 @@ flutter_ios_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  # use_modular_headers! # Можна розкоментувати, якщо будуть помилки з імпортами Firebase
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -39,5 +39,25 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # Виправлення циклічних залежностей (gRPC-Core <-> BoringSSL)
+    if target.name == 'BoringSSL-GRPC'
+      target.source_build_phase.files.each do |file|
+        if file.settings && file.settings['COMPILER_FLAGS']
+          flags = file.settings['COMPILER_FLAGS'].split
+          flags.delete_if { |f| f == '-Wno-shorten-64-to-32' }
+          file.settings['COMPILER_FLAGS'] = flags.join(' ')
+        end
+      end
+    end
+
+    # Додаткове виправлення для архітектури та версії iOS
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      # Вимикаємо перевірку підпису для Pods, щоб не було проблем на фізичному пристрої
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
   end
 end
