@@ -7,8 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/lesson_model.dart';
 import '../widgets/lesson_card.dart';
 import '../../data/schedule_repository.dart'; 
-
-// ВИПРАВЛЕНО: Використовуємо прямий шлях через package. 
 import 'package:uni_helper/features/glossary/data/pnu_event_repository.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -137,6 +135,7 @@ class _SchedulePageState extends State<SchedulePage> {
       final prefs = await SharedPreferences.getInstance();
       List<Lesson> myUserEvents = [];
       final String? savedData = prefs.getString('user_schedule_data');
+      
       if (savedData != null) {
         final Map<String, dynamic> decodedData = json.decode(savedData);
         decodedData.forEach((dateStr, lessonsList) {
@@ -198,14 +197,12 @@ class _SchedulePageState extends State<SchedulePage> {
     await prefs.setString('user_schedule_data', json.encode(exportData));
   }
 
-  // --- МЕТОД ФІЛЬТРАЦІЇ ---
   List<Lesson> _getEventsForDay(DateTime day) {
     final normalizedDay = DateTime(day.year, day.month, day.day);
     final allEvents = _events[normalizedDay] ?? [];
-    
-    // ВИПРАВЛЕНО: Відфільтровуємо новини (ті, що мають префікс 'news_')
-    // Тепер у розкладі будуть лише пари та власні записи.
-    return allEvents.where((event) => !event.id.startsWith("news_")).toList();
+    return allEvents.where((event) {
+      return !event.id.startsWith("news_") && !event.id.startsWith("anon_");
+    }).toList();
   }
 
   @override
@@ -290,7 +287,7 @@ class _SchedulePageState extends State<SchedulePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
-        boxShadow: [BoxShadow(color: const Color(0xFF2D5A40).withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: const Color(0xFF2D5A40).withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5))],
       ),
       child: TableCalendar<Lesson>(
         firstDay: DateTime.utc(2024, 1, 1),
@@ -306,9 +303,12 @@ class _SchedulePageState extends State<SchedulePage> {
           });
         },
         eventLoader: _getEventsForDay,
-        calendarStyle: const CalendarStyle(
-          selectedDecoration: BoxDecoration(color: Color(0xFF2D5A40), shape: BoxShape.circle),
-          todayDecoration: BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
+        calendarStyle: CalendarStyle(
+          selectedDecoration: const BoxDecoration(color: Color(0xFF2D5A40), shape: BoxShape.circle),
+          todayDecoration: const BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
+          // ВИПРАВЛЕННЯ: Повертаємо оранжеві точки під датами
+          markerDecoration: const BoxDecoration(color: Colors.orangeAccent, shape: BoxShape.circle),
+          markersMaxCount: 3,
         ),
         headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
       ),
@@ -343,6 +343,8 @@ class _SchedulePageState extends State<SchedulePage> {
     );
   }
 
+  // --- СУЧАСНЕ ВІКНО ДЕТАЛЕЙ ---
+
   void _showEventDetails(Lesson lesson) {
     final RegExp urlRegExp = RegExp(r'(https?:\/\/[^\s]+)');
     final match = urlRegExp.firstMatch(lesson.description);
@@ -351,37 +353,231 @@ class _SchedulePageState extends State<SchedulePage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: Text(lesson.title, style: const TextStyle(color: Color(0xFF2D5A40))),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              lesson.title,
+              style: const TextStyle(
+                color: Color(0xFF2D5A40),
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D5A40).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF2D5A40).withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.access_time_filled_rounded, size: 16, color: Color(0xFF2D5A40)),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${DateFormat('HH:mm').format(lesson.startTime)} — ${DateFormat('HH:mm').format(lesson.endTime)}",
+                    style: const TextStyle(
+                      color: Color(0xFF2D5A40),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Час: ${DateFormat('HH:mm').format(lesson.startTime)}"),
-            const SizedBox(height: 10),
-            SelectableText(lesson.description),
-            if (extractedUrl != null) ...[
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: extractedUrl));
-                  Navigator.pop(context);
-                },
-                icon: const Icon(Icons.copy),
-                label: const Text("Копіювати посилання"),
-              )
-            ]
+            const Divider(height: 32),
+            const Text(
+              "ДЕТАЛІ",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.grey,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Flexible(
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  lesson.description,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.5,
+                    color: Colors.black87,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          if (lesson.isUserCreated) TextButton(onPressed: () { _deleteEvent(lesson); Navigator.pop(context); }, child: const Text("Видалити", style: TextStyle(color: Colors.red))),
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Закрити")),
+          Row(
+            children: [
+              if (lesson.isUserCreated)
+                IconButton(
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.red.withOpacity(0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    _deleteEvent(lesson);
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent),
+                ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Закрити", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              ),
+              if (extractedUrl != null) ...[
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2D5A40),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: extractedUrl));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Посилання скопійовано!'),
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                  icon: const Icon(Icons.copy_all_rounded, size: 18),
+                  label: const Text("Копіювати", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
 
-  void _showAddEventDialog({Lesson? eventToEdit}) { /* Логіка */ }
+  // --- ЛОГІКА ДОДАВАННЯ ТА ІНШЕ ---
+
+  void _showAddEventDialog() {
+    final titleController = TextEditingController();
+    final descController = TextEditingController();
+    TimeOfDay startTime = TimeOfDay.now();
+    TimeOfDay endTime = TimeOfDay(hour: (startTime.hour + 1) % 24, minute: startTime.minute);
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Text("Додати подію", style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController, 
+                  decoration: InputDecoration(
+                    labelText: "Назва",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController, 
+                  decoration: InputDecoration(
+                    labelText: "Опис",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 15),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.access_time, color: Color(0xFF2D5A40)),
+                  title: Text("Початок: ${startTime.format(context)}"),
+                  onTap: () async {
+                    final time = await showTimePicker(context: context, initialTime: startTime);
+                    if (time != null) setDialogState(() => startTime = time);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.access_time_filled, color: Colors.orangeAccent),
+                  title: Text("Кінець: ${endTime.format(context)}"),
+                  onTap: () async {
+                    final time = await showTimePicker(context: context, initialTime: endTime);
+                    if (time != null) setDialogState(() => endTime = time);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Скасувати")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2D5A40),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                if (titleController.text.isEmpty) return;
+                final now = _selectedDay ?? DateTime.now();
+                final startDT = DateTime(now.year, now.month, now.day, startTime.hour, startTime.minute);
+                final endDT = DateTime(now.year, now.month, now.day, endTime.hour, endTime.minute);
+                
+                if (endDT.isBefore(startDT)) {
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Кінець не може бути раніше початку!')));
+                   return;
+                }
+
+                _addNewEvent(Lesson(
+                  id: "user_${DateTime.now().millisecondsSinceEpoch}", 
+                  title: titleController.text,
+                  description: descController.text,
+                  startTime: startDT,
+                  endTime: endDT,
+                  type: LessonType.practice,
+                  isUserCreated: true,
+                ));
+                Navigator.pop(context);
+              },
+              child: const Text("Зберегти", style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _addNewEvent(Lesson lesson) {
+    final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
+    setState(() {
+      _events.putIfAbsent(dateKey, () => []).add(lesson);
+      _events[dateKey]!.sort((a, b) => a.startTime.compareTo(b.startTime));
+    });
+    _saveEvents(); 
+  }
+
   void _deleteEvent(Lesson lesson, {bool save = true}) {
     final dateKey = DateTime(lesson.startTime.year, lesson.startTime.month, lesson.startTime.day);
     setState(() {
