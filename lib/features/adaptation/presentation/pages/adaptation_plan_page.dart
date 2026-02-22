@@ -60,7 +60,7 @@ class _AdaptationPlanPageState extends State<AdaptationPlanPage> {
 
     try {
       DocumentSnapshot doc =
-          await _firestore.collection('users').doc(_user!.uid).get();
+          await _firestore.collection('users').doc(_user.uid).get();
       if (doc.exists && doc.data() != null) {
         Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         setState(() {
@@ -98,7 +98,7 @@ class _AdaptationPlanPageState extends State<AdaptationPlanPage> {
         .toList();
 
     try {
-      await _firestore.collection('users').doc(_user!.uid).set({
+      await _firestore.collection('users').doc(_user.uid).set({
         'adaptationProgress': completedTasks,
       }, SetOptions(merge: true));
 

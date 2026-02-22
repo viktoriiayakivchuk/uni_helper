@@ -19,7 +19,7 @@ class _ChatbotPageState extends State<ChatbotPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ScrollController _scrollController = ScrollController();
   
-  List<ChatMessage> _messages = [];
+  final List<ChatMessage> _messages = [];
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _currentQuestions = [];
   

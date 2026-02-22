@@ -5,9 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../auth/data/auth_service.dart';
 import '../../../schedule/presentation/pages/schedule_page.dart';
 import '../../../glossary/presentation/pages/glossary_page.dart';
-import 'package:uni_helper/features/social_life/presentation/pages/social_life_page.dart';
+
+// ВИПРАВЛЕНО: Тепер імпортуємо правильний файл Screen, де працює парсер новин
+import '../../../../screens/social_life_screen.dart';
+
 import 'package:uni_helper/features/adaptation/presentation/pages/adaptation_plan_page.dart';
-// ДОДАНО: Імпорт сторінки путівника по документах
 import 'package:uni_helper/features/documents/presentation/pages/documents_page.dart';
 import '../../../contacts/presentation/pages/contacts_page.dart';
 import '../../../auth/presentation/pages/login_page.dart';
@@ -40,6 +42,8 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
     });
   }
+
+  // --- ВІДЖЕТИ ТА ДОПОМІЖНІ МЕТОДИ ---
 
   Widget _buildDailyQuote() {
     final int dayOfMonth = DateTime.now().day;
@@ -85,7 +89,6 @@ class _MainScreenState extends State<MainScreen> {
 
   Widget _buildProfileTab() {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) {
       return LoginPage(onLoginSuccess: () => setState(() {}));
     }
@@ -100,92 +103,23 @@ class _MainScreenState extends State<MainScreen> {
           return const Center(
               child: CircularProgressIndicator(color: Color(0xFF2D5A40)));
         }
-
         if (!snapshot.hasData || !snapshot.data!.exists) {
           return CompleteProfilePage(onSaved: () => setState(() {}));
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
-        if (data['faculty'] == null || data['group'] == null) {
-          return CompleteProfilePage(onSaved: () => setState(() {}));
-        }
-
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
               const SizedBox(height: 40),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(25),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: Colors.white.withOpacity(0.5)),
-                    ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: const Color(0xFF2D5A40),
-                          backgroundImage: user.photoURL != null
-                              ? NetworkImage(user.photoURL!)
-                              : null,
-                          child: user.photoURL == null
-                              ? const Icon(Icons.person,
-                                  size: 50, color: Colors.white)
-                              : null,
-                        ),
-                        const SizedBox(height: 15),
-                        Text(user.displayName ?? 'Студент ПНУ',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF2D5A40))),
-                        const SizedBox(height: 5),
-                        Text(user.email ?? '',
-                            style: TextStyle(
-                                color: Colors.black.withOpacity(0.5),
-                                fontSize: 14)),
-                        const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: Divider(color: Colors.white54)),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildMiniStat(
-                                "КУРС", data['course']?.toString() ?? "-"),
-                            _buildMiniStat("ГРУПА", data['group'] ?? "-"),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              _buildUserInfoHeader(user, data),
               _buildDailyQuote(),
               _buildSimpleInfoCard(
-                  Icons.account_balance_rounded, "Факультет", data['faculty']),
+                  Icons.account_balance_rounded, "Факультет", data['faculty'] ?? "Не вказано"),
               const SizedBox(height: 15),
-              TextButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => CompleteProfilePage(
-                              onSaved: () => setState(() {}))));
-                },
-                icon: const Icon(Icons.edit_note_rounded,
-                    color: Color(0xFF2D5A40)),
-                label: const Text("Редагувати дані профілю",
-                    style: TextStyle(
-                        color: Color(0xFF2D5A40), fontWeight: FontWeight.w600)),
-              ),
+              _buildEditProfileButton(),
               const SizedBox(height: 25),
               _buildLogoutButton(),
               const SizedBox(height: 120),
@@ -196,17 +130,53 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _buildUserInfoHeader(User user, Map<String, dynamic> data) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(25),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.white.withOpacity(0.5)),
+          ),
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: const Color(0xFF2D5A40),
+                backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                child: user.photoURL == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
+              ),
+              const SizedBox(height: 15),
+              Text(user.displayName ?? 'Студент ПНУ',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
+              const SizedBox(height: 5),
+              Text(user.email ?? '', style: TextStyle(color: Colors.black.withOpacity(0.5), fontSize: 14)),
+              const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Colors.white54)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildMiniStat("КУРС", data['course']?.toString() ?? "-"),
+                  _buildMiniStat("ГРУПА", data['group'] ?? "-"),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMiniStat(String label, String value) {
     return Column(
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D5A40))),
+        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
       ],
     );
   }
@@ -214,9 +184,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildSimpleInfoCard(IconData icon, String title, String value) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.white.withOpacity(0.4), borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           Icon(icon, color: const Color(0xFF2D5A40)),
@@ -225,19 +193,21 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.black54)),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87)),
+                Text(title, style: const TextStyle(fontSize: 11, color: Colors.black54)),
+                Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEditProfileButton() {
+    return TextButton.icon(
+      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => CompleteProfilePage(onSaved: () => setState(() {})))),
+      icon: const Icon(Icons.edit_note_rounded, color: Color(0xFF2D5A40)),
+      label: const Text("Редагувати дані профілю", style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.w600)),
     );
   }
 
@@ -248,9 +218,7 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {});
       },
       icon: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-      label: const Text("ВИЙТИ З АКАУНТА / ЗМІНИТИ КОРИСТУВАЧА",
-          style:
-              TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+      label: const Text("ВИЙТИ З АКАУНТА", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
       style: TextButton.styleFrom(
         backgroundColor: Colors.redAccent.withOpacity(0.05),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -258,6 +226,8 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+
+  // --- ГОЛОВНИЙ BUILD ---
 
   @override
   Widget build(BuildContext context) {
@@ -270,8 +240,7 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 0,
         centerTitle: true,
         title: const Text('UniHelper',
-            style: TextStyle(
-                color: Color(0xFF2D5A40), fontWeight: FontWeight.bold)),
+            style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.menu_rounded, color: Color(0xFF2D5A40)),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
@@ -306,66 +275,49 @@ class _MainScreenState extends State<MainScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Image.asset(
-                  'assets/icon/app_icon.png',
-                  height: 60,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.school_rounded,
-                      color: Colors.white,
-                      size: 60),
-                ),
+                const Icon(Icons.school_rounded, color: Colors.white, size: 50),
                 const SizedBox(height: 12),
-                const Text('UniHelper КНУВС',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold)),
+                // ВИПРАВЛЕНО: Назва ПНУ замість КНУВС
+                const Text('UniHelper ПНУ',
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
                 const Text('Твій персональний помічник',
                     style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),
           ),
-          _drawerItem(Icons.map_outlined, 'Карта університету',
-              () => Navigator.pop(context)),
+          _drawerItem(Icons.map_outlined, 'Карта університету', () => Navigator.pop(context)),
 
+          // ВИПРАВЛЕНО: Тепер відкриваємо SocialLifeScreen (з новинами)
           _drawerItem(Icons.celebration_outlined, 'Соціальне життя', () {
             Navigator.pop(context);
             Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const SocialLifePage()));
+                    builder: (context) => const SocialLifeScreen()));
           }),
 
-          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації',
-              () {
+          _drawerItem(Icons.assignment_turned_in_outlined, 'План адаптації', () {
             Navigator.pop(context);
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const AdaptationPlanPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const AdaptationPlanPage()));
           }),
 
           _drawerItem(Icons.description_outlined, 'Путівник по документах', () {
             Navigator.pop(context);
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const DocumentsPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const DocumentsPage()));
           }),
 
           _drawerItem(Icons.favorite_border, 'Підтримка та мотивація', () {
             Navigator.pop(context);
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const SupportPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const SupportPage()));
           }),
           const Divider(),
           _drawerItem(Icons.link, 'Офіційні ресурси', () {
             Navigator.pop(context);
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ResourcesPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ResourcesPage()));
           }),
           _drawerItem(Icons.contact_phone_outlined, 'Корисні контакти', () {
             Navigator.pop(context);
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ContactsPage()));
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const ContactsPage()));
           }),
         ],
       ),
@@ -376,8 +328,7 @@ class _MainScreenState extends State<MainScreen> {
     return ListTile(
       leading: Icon(icon, color: const Color(0xFF2D5A40)),
       title: Text(title,
-          style: const TextStyle(
-              color: Color(0xFF2D5A40), fontWeight: FontWeight.w500)),
+          style: const TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.w500)),
       onTap: onTap,
     );
   }
@@ -389,10 +340,7 @@ class _MainScreenState extends State<MainScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 10))
+            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10))
           ],
         ),
         child: ClipRRect(
@@ -408,14 +356,10 @@ class _MainScreenState extends State<MainScreen> {
               elevation: 0,
               type: BottomNavigationBarType.fixed,
               items: const [
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.calendar_today_rounded), label: 'Розклад'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.smart_toy_rounded), label: 'Бот'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.menu_book_rounded), label: 'Словник'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.person_rounded), label: 'Профіль'),
+                BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Розклад'),
+                BottomNavigationBarItem(icon: Icon(Icons.smart_toy_rounded), label: 'Бот'),
+                BottomNavigationBarItem(icon: Icon(Icons.menu_book_rounded), label: 'Словник'),
+                BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Профіль'),
               ],
             ),
           ),

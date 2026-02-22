@@ -55,7 +55,7 @@ class UsefulContactsScreen extends StatelessWidget {
               const SizedBox(height: 15),
               
               // 3. Рендеримо список через метод
-              ...contacts.map((contact) => _buildContactCard(contact)).toList(),
+              ...contacts.map((contact) => _buildContactCard(contact)),
             ],
           ),
         ),

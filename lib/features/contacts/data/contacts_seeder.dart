@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../domain/contact_item.dart';
 
 class ContactsSeeder {
   static final List<Map<String, dynamic>> _initialContacts = [

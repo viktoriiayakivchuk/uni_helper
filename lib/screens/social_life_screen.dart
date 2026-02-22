@@ -1,139 +1,240 @@
 import 'package:flutter/material.dart';
-import 'dart:ui';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:uni_helper/screens/news_detail_screen.dart';
+import 'package:uni_helper/features/glossary/data/pnu_event_repository.dart';
+import 'package:uni_helper/features/schedule/domain/lesson_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class SocialLifeScreen extends StatelessWidget {
-  const SocialLifeScreen({super.key});
+class SocialLifeScreen extends StatefulWidget {
+  final String userGroup; 
+  const SocialLifeScreen({super.key, this.userGroup = "ІПЗ -33"});
+
+  @override
+  State<SocialLifeScreen> createState() => _SocialLifeScreenState();
+}
+
+class _SocialLifeScreenState extends State<SocialLifeScreen> {
+  final PnuEventRepository _pnuRepository = PnuEventRepository();
+  
+  List<Lesson> _pnuNews = [];
+  List<Lesson> _announcements = []; // Список для анонсів
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllData();
+  }
+
+  // Завантаження новин та анонсів одночасно
+  Future<void> _loadAllData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    
+    try {
+      final results = await Future.wait([
+        _pnuRepository.fetchPnuEvents(),
+        _pnuRepository.fetchAnnouncements(), // Цей метод ми додали в репозиторій
+      ]);
+      
+      if (mounted) {
+        setState(() {
+          _pnuNews = results[0];
+          _announcements = results[1];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ Помилка завантаження даних: $e");
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        title: const Text('Соціальне життя', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF2D5A40),
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Фільтрація (Твій метод тепер у дії)
-              const Text(
-                'Категорії',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
-              ),
-              const SizedBox(height: 10),
-              _buildFilterChips(),
-              
-              const SizedBox(height: 25),
-
-              // 2. Стрічка анонсів
-              const Text(
-                'Найближчі події',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
-              ),
-              const SizedBox(height: 15),
-              _buildEventCard('Екскурсія університетом', '10 лют, 14:00', 'Студрада'),
-              _buildEventCard('Гранти Erasmus+', '15 лют, 11:00', 'Міжнародний відділ'),
-              _buildEventCard('Зустріч з куратором', '12 лют, 10:00', 'Кафедра'),
-
-              const SizedBox(height: 25),
-
-              // 3. Секції FAQ та Знайомства
-              const Text(
-                'Додатково',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
-              ),
-              const SizedBox(height: 15),
-              _buildActionCard(
-                'FAQ: Організації та клуби', 
-                'Все про студентське дозвілля', 
-                Icons.help_center_outlined
-              ),
-              _buildActionCard(
-                'Познайомся з групою', 
-                'Чат вашої групи та куратор', 
-                Icons.people_outline
-              ),
+    return DefaultTabController(
+      length: 3, // Кількість вкладок: Новини, Анонси, Група
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF1F3F2),
+        appBar: AppBar(
+          title: const Text('Соціальне життя', 
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          backgroundColor: const Color(0xFF2D5A40),
+          iconTheme: const IconThemeData(color: Colors.white),
+          bottom: const TabBar(
+            isScrollable: false, // Можна поставити true, якщо назви не вміщаються
+            indicatorColor: Colors.white,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white70,
+            tabs: [
+              Tab(icon: Icon(Icons.article), text: "Новини"),
+              Tab(icon: Icon(Icons.campaign), text: "Анонси"),
+              Tab(icon: Icon(Icons.group), text: "Група"),
             ],
           ),
         ),
+        body: TabBarView(
+          children: [
+            _buildDataTab(_pnuNews),       // Вкладка новин
+            _buildDataTab(_announcements), // Вкладка анонсів
+            _buildGroupTab(),              // Вкладка групи
+          ],
+        ),
       ),
     );
   }
 
-  // МЕТОД 1: Фільтри
-  Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: ['Всі', 'Оголошення', 'Erasmus+', 'Наука'].map((filter) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: FilterChip(
-              label: Text(filter),
-              onSelected: (val) {},
-              backgroundColor: Colors.white,
-              selectedColor: const Color(0xFF2D5A40).withOpacity(0.2),
+  // Універсальний метод для побудови списків новин та анонсів
+  Widget _buildDataTab(List<Lesson> dataList) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF2D5A40)));
+    }
+    
+    if (dataList.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _loadAllData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            alignment: Alignment.center,
+            child: const Text("Даних поки немає (потягніть, щоб оновити)"),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAllData,
+      color: const Color(0xFF2D5A40),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: dataList.length,
+        itemBuilder: (context, index) => _buildNewsCard(dataList[index]),
+      ),
+    );
+  }
+
+  // Вкладка групи з Firebase
+  Widget _buildGroupTab() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .where('group', isEqualTo: widget.userGroup)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const Center(child: Text("Помилка завантаження"));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF2D5A40)));
+        }
+
+        final students = snapshot.data?.docs ?? [];
+
+        if (students.isEmpty) {
+          return Center(child: Text("У групі ${widget.userGroup} поки порожньо"));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: students.length,
+          itemBuilder: (context, index) {
+            final data = students[index].data() as Map<String, dynamic>;
+            
+            String name = data['name'] ?? data['displayName'] ?? data['fullName'] ?? "";
+            final String email = data['email'] ?? "";
+
+            if (name.isEmpty && email.isNotEmpty) {
+              name = email.split('@')[0];
+            } else if (name.isEmpty) {
+              name = "Студент";
+            }
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFF2D5A40),
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : "?", 
+                    style: const TextStyle(color: Colors.white)
+                  ),
+                ),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(email),
+                trailing: IconButton(
+                  icon: const Icon(Icons.email, color: Color(0xFF2D5A40)),
+                  onPressed: () => _sendEmail(email),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Картка для відображення новини/анонсу
+  Widget _buildNewsCard(Lesson news) {
+    final parts = news.description.split('|');
+    final String articleUrl = parts[0];
+    final String imageUrl = parts.length > 1 ? parts[1] : "";
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      elevation: 3,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => NewsDetailScreen(url: articleUrl, title: news.title),
             ),
           );
-        }).toList(),
-      ),
-    );
-  }
-
-  // МЕТОД 2: Картка події (Оновлено: додано кнопку "Нагадати")
-  Widget _buildEventCard(String title, String date, String organizer) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: const Color(0xFF2D5A40).withOpacity(0.05),
-        border: Border.all(color: const Color(0xFF2D5A40).withOpacity(0.1)),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(15),
-        leading: const CircleAvatar(
-          backgroundColor: Color(0xFF2D5A40),
-          child: Icon(Icons.event, color: Colors.white),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('$date • $organizer'),
-        trailing: IconButton(
-          icon: const Icon(Icons.notification_add_outlined, color: Color(0xFF2D5A40)),
-          onPressed: () {
-            // Тут буде додавання в календар
-          },
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (imageUrl.isNotEmpty && imageUrl.contains('http'))
+              Image.network(
+                imageUrl, 
+                height: 180, 
+                width: double.infinity, 
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _buildPlaceholder()
+              )
+            else
+              _buildPlaceholder(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                news.title, 
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
+                maxLines: 2, 
+                overflow: TextOverflow.ellipsis
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // МЕТОД 3: Картка для FAQ та Знайомств
-  Widget _buildActionCard(String title, String subtitle, IconData icon) {
+  Widget _buildPlaceholder() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: const Color(0xFF2D5A40), size: 28),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: () {},
-      ),
+      height: 150, 
+      width: double.infinity, 
+      color: const Color(0xFFE8F0EA),
+      child: const Icon(Icons.newspaper, size: 60, color: Color(0xFF2D5A40))
     );
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final Uri emailLaunchUri = Uri(scheme: 'mailto', path: email);
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri);
+    }
   }
 }

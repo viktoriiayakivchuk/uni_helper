@@ -36,6 +36,7 @@ dependencies:
   flutter_local_notifications: ^18.0.1 # Для нагадувань
   timezone: ^0.10.0 # Для правильної роботи часу сповіщень
   share_plus: ^10.1.0 # Залишено одну стабільну версію
+  webview_flutter: ^4.13.1
 
 dev_dependencies:
   flutter_test:
