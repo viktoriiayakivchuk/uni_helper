@@ -56,5 +56,12 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Дозволи для камери та фото -->
+	<key>NSCameraUsageDescription</key>
+	<string>Додаток потребує доступу до камери для сканування студентського квитка</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Додаток потребує доступу до фотографій для вибору студентського квитка</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Додаток потребує доступу для збереження зображень</string>
 </dict>
 </plist>

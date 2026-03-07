@@ -18,6 +18,7 @@ import '../../../resources/presentation/pages/resources_page.dart';
 import '../../../support/presentation/pages/support_page.dart';
 import '../../../support/data/motivation_data.dart';
 import '../../../chatbot/presentation/pages/chatbot_page.dart';
+import '../../../student_card/presentation/pages/student_card_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -119,6 +120,8 @@ class _MainScreenState extends State<MainScreen> {
               _buildSimpleInfoCard(
                   Icons.account_balance_rounded, "Факультет", data['faculty'] ?? "Не вказано"),
               const SizedBox(height: 15),
+              _buildStudentCardButton(),
+              const SizedBox(height: 15),
               _buildEditProfileButton(),
               const SizedBox(height: 25),
               _buildLogoutButton(),
@@ -200,6 +203,17 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStudentCardButton() {
+    return TextButton.icon(
+      onPressed: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const StudentCardPage()),
+      ),
+      icon: const Icon(Icons.school_rounded, color: Color(0xFF2D5A40)),
+      label: const Text("Студентський", style: TextStyle(color: Color(0xFF2D5A40), fontWeight: FontWeight.w600)),
     );
   }
 
