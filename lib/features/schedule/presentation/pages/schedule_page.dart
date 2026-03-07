@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../domain/lesson_model.dart';
 import '../widgets/lesson_card.dart';
+import '../widgets/modern_time_picker.dart';
 import '../../data/schedule_repository.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -641,43 +642,127 @@ class _SchedulePageState extends State<SchedulePage> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async { 
-                        final time = await showTimePicker(
-                          context: context, 
-                          initialTime: selectedStartTime,
-                          builder: (BuildContext context, Widget? child) {
-                            return MediaQuery(
-                              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                              child: child!,
-                            );
-                          },
-                        ); 
-                        if (time != null) setModalState(() => selectedStartTime = time); 
-                      }, 
-                      icon: const Icon(Icons.access_time), 
-                      label: Text('${selectedStartTime.hour.toString().padLeft(2, '0')}:${selectedStartTime.minute.toString().padLeft(2, '0')}'),
-                    )
+                    child: GestureDetector(
+                      onTap: () async {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => ModernTimePickerWidget(
+                            title: 'Час початку',
+                            initialTime: selectedStartTime,
+                            onTimeSelected: (time) {
+                              setModalState(() => selectedStartTime = time);
+                            },
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFF2D5A40),
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Час початку',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.schedule,
+                                  color: Color(0xFF2D5A40),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${selectedStartTime.hour.toString().padLeft(2, '0')}:${selectedStartTime.minute.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2D5A40),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async { 
-                        final time = await showTimePicker(
-                          context: context, 
-                          initialTime: selectedEndTime,
-                          builder: (BuildContext context, Widget? child) {
-                            return MediaQuery(
-                              data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                              child: child!,
-                            );
-                          },
-                        ); 
-                        if (time != null) setModalState(() => selectedEndTime = time); 
-                      }, 
-                      icon: const Icon(Icons.access_time_filled), 
-                      label: Text('${selectedEndTime.hour.toString().padLeft(2, '0')}:${selectedEndTime.minute.toString().padLeft(2, '0')}'),
-                    )
+                    child: GestureDetector(
+                      onTap: () async {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => ModernTimePickerWidget(
+                            title: 'Час завершення',
+                            initialTime: selectedEndTime,
+                            onTimeSelected: (time) {
+                              setModalState(() => selectedEndTime = time);
+                            },
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFF2D5A40),
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Час завершення',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.schedule_rounded,
+                                  color: Color(0xFF2D5A40),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${selectedEndTime.hour.toString().padLeft(2, '0')}:${selectedEndTime.minute.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF2D5A40),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ]
               ),
