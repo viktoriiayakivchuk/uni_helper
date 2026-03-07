@@ -27,8 +27,28 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
     super.initState();
     selectedHour = widget.initialTime.hour;
     selectedMinute = widget.initialTime.minute;
-    _hourController = PageController(initialPage: selectedHour, viewportFraction: 0.2);
-    _minuteController = PageController(initialPage: selectedMinute ~/ 5, viewportFraction: 0.2);
+    _hourController = PageController(initialPage: selectedHour, viewportFraction: 0.25);
+    _minuteController = PageController(initialPage: selectedMinute ~/ 5, viewportFraction: 0.25);
+    
+    // Слухач для плавного оновлення при скролі
+    _hourController.addListener(() {
+      final hour = _hourController.page?.round() ?? selectedHour;
+      if (hour != selectedHour) {
+        setState(() {
+          selectedHour = hour.clamp(0, 23);
+        });
+      }
+    });
+
+    _minuteController.addListener(() {
+      final page = _minuteController.page?.round() ?? (selectedMinute ~/ 5);
+      final minute = ((page * 5) % 60).clamp(0, 59);
+      if (minute != selectedMinute) {
+        setState(() {
+          selectedMinute = minute;
+        });
+      }
+    });
   }
 
   @override
@@ -99,27 +119,27 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
               children: [
                 // Години
                 SizedBox(
-                  width: 70,
-                  height: 180,
+                  width: 80,
+                  height: 200,
                   child: PageView.builder(
                     controller: _hourController,
-                    onPageChanged: (index) {
-                      setState(() => selectedHour = index);
-                    },
-                    itemBuilder: (context, index) => Center(
-                      child: Text(
-                        index.toString().padLeft(2, '0'),
-                        style: TextStyle(
-                          fontSize: selectedHour == index ? 48 : 32,
-                          fontWeight: selectedHour == index
-                              ? FontWeight.w900
-                              : FontWeight.w400,
-                          color: selectedHour == index
-                              ? const Color(0xFF2D5A40)
-                              : Colors.grey[400],
+                    physics: const FixedExtentScrollPhysics(),
+                    itemCount: 24,
+                    itemBuilder: (context, index) {
+                      final isSelected = (selectedHour - index).abs() < 0.5;
+                      return Center(
+                        child: Text(
+                          index.toString().padLeft(2, '0'),
+                          style: TextStyle(
+                            fontSize: isSelected ? 56 : 28,
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w300,
+                            color: isSelected
+                                ? const Color(0xFF2D5A40)
+                                : Colors.grey[300],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
 
@@ -159,6 +179,7 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
                     onPageChanged: (index) {
                       setState(() => selectedMinute = (index * 5) % 60);
                     },
+                    itemCount: 12,
                     itemBuilder: (context, index) {
                       final minute = (index * 5) % 60;
                       return Center(
