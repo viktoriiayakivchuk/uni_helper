@@ -6,11 +6,11 @@ class ModernTimePickerWidget extends StatefulWidget {
   final Function(TimeOfDay) onTimeSelected;
 
   const ModernTimePickerWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.initialTime,
     required this.onTimeSelected,
-  }) : super(key: key);
+  });
 
   @override
   State<ModernTimePickerWidget> createState() => _ModernTimePickerWidgetState();
@@ -27,28 +27,8 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
     super.initState();
     selectedHour = widget.initialTime.hour;
     selectedMinute = widget.initialTime.minute;
-    _hourController = PageController(initialPage: selectedHour, viewportFraction: 0.25);
-    _minuteController = PageController(initialPage: selectedMinute ~/ 5, viewportFraction: 0.25);
-    
-    // Слухач для плавного оновлення при скролі
-    _hourController.addListener(() {
-      final hour = _hourController.page?.round() ?? selectedHour;
-      if (hour != selectedHour) {
-        setState(() {
-          selectedHour = hour.clamp(0, 23);
-        });
-      }
-    });
-
-    _minuteController.addListener(() {
-      final page = _minuteController.page?.round() ?? (selectedMinute ~/ 5);
-      final minute = ((page * 5) % 60).clamp(0, 59);
-      if (minute != selectedMinute) {
-        setState(() {
-          selectedMinute = minute;
-        });
-      }
-    });
+    _hourController = PageController(initialPage: selectedHour);
+    _minuteController = PageController(initialPage: selectedMinute ~/ 5);
   }
 
   @override
@@ -123,10 +103,15 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
                   height: 200,
                   child: PageView.builder(
                     controller: _hourController,
-                    physics: const FixedExtentScrollPhysics(),
+                    scrollDirection: Axis.vertical,
+                    onPageChanged: (index) {
+                      setState(() {
+                        selectedHour = index.clamp(0, 23);
+                      });
+                    },
                     itemCount: 24,
                     itemBuilder: (context, index) {
-                      final isSelected = (selectedHour - index).abs() < 0.5;
+                      final isSelected = selectedHour == index;
                       return Center(
                         child: Text(
                           index.toString().padLeft(2, '0'),
@@ -176,6 +161,7 @@ class _ModernTimePickerWidgetState extends State<ModernTimePickerWidget> {
                   height: 180,
                   child: PageView.builder(
                     controller: _minuteController,
+                    scrollDirection: Axis.vertical,
                     onPageChanged: (index) {
                       setState(() => selectedMinute = (index * 5) % 60);
                     },

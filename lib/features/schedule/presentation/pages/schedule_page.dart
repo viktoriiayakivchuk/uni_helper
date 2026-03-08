@@ -132,7 +132,7 @@ class _SchedulePageState extends State<SchedulePage> {
         _groupController.text = groupToLoad!; 
       });
       
-      await _loginWithGroup(groupToLoad!); 
+      await _loginWithGroup(groupToLoad); 
     }
   }
 
@@ -333,7 +333,7 @@ class _SchedulePageState extends State<SchedulePage> {
             TextField(
               controller: _groupController,
               keyboardType: TextInputType.text, 
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: "Назва групи",       
                 hintText: "Наприклад: ІПЗ-33", 
                 helperText: "Введіть точну назву групи як на сайті (з пробілами)",
@@ -483,7 +483,7 @@ class _SchedulePageState extends State<SchedulePage> {
                           }
                           await _setReminderTime(lesson, notifId, minutes);
                         },
-                      )).toList(),
+                      )),
                     ],
                   ),
                 );
@@ -513,30 +513,81 @@ class _SchedulePageState extends State<SchedulePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(lesson.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40))),
-                const SizedBox(height: 15),
-                Row(children: [const Icon(Icons.access_time_rounded, color: Colors.orangeAccent), const SizedBox(width: 10), Text("${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500))]),
-                const SizedBox(height: 10),
-                
-                // 2. Змінено: Text -> SelectableText (тепер текст можна затиснути і виділити)
-                if (lesson.description.isNotEmpty) 
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start, 
-                    children: [
-                      const Icon(Icons.notes_rounded, color: Colors.grey), 
-                      const SizedBox(width: 10), 
-                      Expanded(
-                        child: SelectableText(
-                          lesson.description, 
-                          style: const TextStyle(fontSize: 16, color: Colors.black87)
-                        )
-                      )
-                    ]
+                // Заголовок справи
+                Text(
+                  lesson.title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D5A40),
                   ),
-                
-                // 3. Додано: Якщо є посилання, з'являється зручна кнопка
+                ),
+                const SizedBox(height: 20),
+
+                // Інформація про час
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.orangeAccent.withOpacity(0.2),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded, color: Colors.orangeAccent, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "${DateFormat('HH:mm').format(lesson.startTime)} - ${DateFormat('HH:mm').format(lesson.endTime)}",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2D5A40),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Опис справи
+                if (lesson.description.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: Colors.grey.withOpacity(0.1),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.notes_rounded, color: Colors.grey, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SelectableText(
+                            lesson.description,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // Кнопка копіювання посилання
                 if (extractedUrl != null) ...[
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -548,7 +599,7 @@ class _SchedulePageState extends State<SchedulePage> {
                               content: Text('🔗 Посилання скопійовано!'),
                               backgroundColor: Color(0xFF2D5A40),
                               duration: Duration(seconds: 2),
-                            )
+                            ),
                           );
                         }
                       },
@@ -562,34 +613,55 @@ class _SchedulePageState extends State<SchedulePage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
-                  )
+                  ),
                 ],
 
-                const SizedBox(height: 25),
-                const Divider(),
-                const SizedBox(height: 10),
-                
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                    TextButton.icon(
-                      onPressed: () { 
-                        _deleteEvent(lesson); 
-                        Navigator.pop(context); 
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Видалено'))); 
-                      }, 
-                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent), 
-                      label: const Text("Видалити", style: TextStyle(color: Colors.redAccent))
+                const SizedBox(height: 28),
+
+                // Кнопки дій
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showDeleteConfirmation(lesson);
+                        },
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        label: const Text(
+                          "Видалити",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.redAccent, width: 1.5),
+                          foregroundColor: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () { 
-                        Navigator.pop(context); 
-                        _showAddEventDialog(eventToEdit: lesson); 
-                      }, 
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2D5A40), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), 
-                      icon: const Icon(Icons.edit_outlined, size: 18), 
-                      label: const Text("Змінити")
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _showAddEventDialog(eventToEdit: lesson);
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 20),
+                        label: const Text(
+                          "Змінити",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2D5A40),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
                     ),
-                ])
+                  ],
+                ),
               ],
             ),
           ),
@@ -811,6 +883,108 @@ class _SchedulePageState extends State<SchedulePage> {
     });
     
     _saveEvents();
+  }
+
+  void _showDeleteConfirmation(Lesson lesson) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_rounded, color: Colors.red, size: 32),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Видалити справу?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D5A40),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${lesson.title}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.grey, width: 1.5),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Скасувати',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteEvent(lesson);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Справу видалено'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Видалити',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _deleteEvent(Lesson lesson, {bool save = true}) {
