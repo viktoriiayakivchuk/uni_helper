@@ -1,17 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; 
-import 'package:flutter/foundation.dart'; 
+import 'package:flutter/services.dart';
 import 'firebase_options.dart'; 
 import 'features/navigation/presentation/pages/main_screen.dart';
 
 // Імпорти сидерів
-import 'features/social_life/data/events_seeder.dart'; 
-import 'features/social_life/data/faq_seeder.dart'; // Додай цей рядок!
+// Додай цей рядок!
 
 import 'core/services/notification_service.dart';
+import 'services/widget_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Налаштування Platform Channel для Widget
+  const platform = MethodChannel('com.uni_helper/widget');
+  platform.setMethodCallHandler((call) async {
+    if (call.method == 'updateWidget') {
+      final Map<String, dynamic> args = call.arguments as Map<String, dynamic>;
+      // Обробка оновлення Widget (якщо потрібна додаткова логіка)
+      return true;
+    } else if (call.method == 'clearWidget') {
+      // Обробка очищення Widget
+      return true;
+    }
+    return false;
+  });
   
   try {
     await Firebase.initializeApp(

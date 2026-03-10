@@ -12,6 +12,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../../../core/services/notification_service.dart';
+import '../../../../services/widget_data_service.dart';
 
 import 'package:flutter/services.dart';
 
@@ -188,7 +189,17 @@ class _SchedulePageState extends State<SchedulePage> {
         _events = newEvents;
       });
       
-      await _saveEvents(); 
+      await _saveEvents();
+      
+      // 🎯 Оновити iOS Widget з розкладом на сьогодні
+      final todayKey = DateTime(_focusedDay.year, _focusedDay.month, _focusedDay.day);
+      final todayLessons = newEvents[todayKey] ?? [];
+      if (todayLessons.isNotEmpty) {
+        await WidgetDataService.updateScheduleWidget(
+          lessons: todayLessons,
+          groupName: groupId,
+        );
+      }
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Розклад оновлено! Ваші події (${myUserEvents.length}) збережено.')),
@@ -217,6 +228,9 @@ class _SchedulePageState extends State<SchedulePage> {
   Future<void> _logoutGroup() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('saved_group');
+    
+    // 🎯 Очистити Widget дані при виході
+    await WidgetDataService.clearWidgetData();
     
     setState(() {
       _userGroup = null;
@@ -385,6 +399,16 @@ class _SchedulePageState extends State<SchedulePage> {
               _selectedDay = selectedDay;
               _focusedDay = focusedDay;
             });
+            
+            // 🎯 Оновити Widget'а рядичиз для обраного дня
+            final selectedDayKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+            final selectedLessons = _events[selectedDayKey] ?? [];
+            if (selectedLessons.isNotEmpty && _userGroup != null) {
+              WidgetDataService.updateScheduleWidget(
+                lessons: selectedLessons,
+                groupName: _userGroup!,
+              );
+            }
           }
         },
         onFormatChanged: (format) {
@@ -919,7 +943,7 @@ class _SchedulePageState extends State<SchedulePage> {
               ),
               const SizedBox(height: 8),
               Text(
-                '${lesson.title}',
+                lesson.title,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
