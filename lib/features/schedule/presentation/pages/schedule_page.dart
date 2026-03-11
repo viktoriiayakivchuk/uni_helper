@@ -15,6 +15,7 @@ import '../../../../core/services/notification_service.dart';
 import '../../../../services/widget_data_service.dart';
 
 import 'package:flutter/services.dart';
+import 'package:home_widget/home_widget.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -46,6 +47,30 @@ class _SchedulePageState extends State<SchedulePage> {
     _loadEvents().then((_) {
       _checkUserGroup(); 
     });
+    Future<void> _updateAndroidWidget() async {
+  try {
+    // Беремо саме сьогоднішню дату
+    final now = DateTime.now();
+    final todayKey = DateTime(now.year, now.month, now.day);
+    
+    // Отримуємо список справ (пари з сайту + ваші нотатки)
+    final lessonsToday = _events[todayKey] ?? [];
+
+    String content = "Пар на сьогодні немає";
+    if (lessonsToday.isNotEmpty) {
+      lessonsToday.sort((a, b) => a.startTime.compareTo(b.startTime));
+      content = lessonsToday
+          .map((l) => "${DateFormat('HH:mm').format(l.startTime)} - ${l.title}")
+          .join("\n");
+    }
+
+    // Відправляємо в Android
+    await HomeWidget.saveWidgetData<String>('schedule_data', content);
+    await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+  } catch (e) {
+    debugPrint("Помилка оновлення віджета: $e");
+  }
+}
   }
 
   Future<void> _setReminderTime(Lesson lesson, int notifId, int minutes) async {
@@ -190,6 +215,7 @@ class _SchedulePageState extends State<SchedulePage> {
       });
       
       await _saveEvents();
+      await _updateAndroidWidget();
       
       // 🎯 Оновити iOS Widget з розкладом на сьогодні
       final todayKey = DateTime(_focusedDay.year, _focusedDay.month, _focusedDay.day);
@@ -264,6 +290,8 @@ class _SchedulePageState extends State<SchedulePage> {
     } catch (e) {
       debugPrint("Помилка завантаження кешу: $e");
     }
+
+    await _updateAndroidWidget();
   }
 
   List<Lesson> _getEventsForDay(DateTime day) {
@@ -1025,5 +1053,32 @@ class _SchedulePageState extends State<SchedulePage> {
       _events[dateKey]?.removeWhere((l) => l.id == lesson.id);
       if (save) _saveEvents();
     });
+  }
+  // Метод для синхронізації даних з Android віджетом
+  Future<void> _updateAndroidWidget() async {
+    try {
+      final now = DateTime.now();
+      final todayKey = DateTime(now.year, now.month, now.day);
+      
+      // Отримуємо всі події на сьогодні (і пари, і власні)
+      final lessonsToday = _events[todayKey] ?? [];
+
+      String content = "Пар на сьогодні немає";
+      if (lessonsToday.isNotEmpty) {
+        // Сортуємо за часом
+        lessonsToday.sort((a, b) => a.startTime.compareTo(b.startTime));
+        
+        content = lessonsToday
+            .map((l) => "${DateFormat('HH:mm').format(l.startTime)} - ${l.title}")
+            .join("\n");
+      }
+
+      // Записуємо дані
+      await HomeWidget.saveWidgetData<String>('schedule_data', content);
+      // Оновлюємо віджет
+      await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+    } catch (e) {
+      debugPrint("Помилка оновлення віджета: $e");
+    }
   }
 }

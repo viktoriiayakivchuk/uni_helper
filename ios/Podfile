@@ -1,4 +1,4 @@
- platform :ios, '13.0'
+ platform :ios, '15.5'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
@@ -26,8 +26,8 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
-  # use_modular_headers! # Можна розкоментувати, якщо будуть помилки з імпортами Firebase
+  use_frameworks! :linkage => :static
+  use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   
@@ -53,11 +53,22 @@ post_install do |installer|
 
     # Додаткове виправлення для архітектури та версії iOS
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.5'
       # Вимикаємо перевірку підпису для Pods, щоб не було проблем на фізичному пристрої
       config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
       config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
       config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
+  end
+
+  # Видаляємо EXCLUDED_ARCHS з Pods-Runner xcconfig,
+  # щоб Xcode міг знайти iOS 26 симулятори як destination.
+  # Замість цього явно вказуємо ARCHS для симулятора.
+  aggregate_target = installer.aggregate_targets.find { |t| t.name == 'Pods-Runner' }
+  if aggregate_target
+    aggregate_target.xcconfigs.each do |config_name, xcconfig|
+      xcconfig.attributes.delete('EXCLUDED_ARCHS[sdk=iphonesimulator*]')
+      xcconfig.save_as(aggregate_target.xcconfig_path(config_name))
     end
   end
 end
