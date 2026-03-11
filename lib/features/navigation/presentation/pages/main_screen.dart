@@ -284,17 +284,17 @@ class _MainScreenState extends State<MainScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Color(0xFF2D5A40)),
+          const DrawerHeader(
+            decoration: BoxDecoration(color: Color(0xFF2D5A40)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.school_rounded, color: Colors.white, size: 50),
-                const SizedBox(height: 12),
+                Icon(Icons.school_rounded, color: Colors.white, size: 50),
+                SizedBox(height: 12),
                 // ВИПРАВЛЕНО: Назва ПНУ замість КНУВС
-                const Text('UniHelper ПНУ',
+                Text('UniHelper ПНУ',
                     style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                const Text('Твій персональний помічник',
+                Text('Твій персональний помічник',
                     style: TextStyle(color: Colors.white70, fontSize: 12)),
               ],
             ),

@@ -6,8 +6,7 @@ import '../../data/student_card_extractor.dart';
 class ScanStudentCardPage extends StatefulWidget {
   final Function(StudentCardData) onCardScanned;
 
-  const ScanStudentCardPage({Key? key, required this.onCardScanned})
-      : super(key: key);
+  const ScanStudentCardPage({super.key, required this.onCardScanned});
 
   @override
   State<ScanStudentCardPage> createState() => _ScanStudentCardPageState();
@@ -69,11 +68,11 @@ class _ScanStudentCardPageState extends State<ScanStudentCardPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Обробка документа'),
+      builder: (context) => const AlertDialog(
+        title: Text('Обробка документа'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: const [
+          children: [
             CircularProgressIndicator(color: Color(0xFF2D5A40)),
             SizedBox(height: 20),
             Text('Розпізнавання тексту...\nБудь ласка, зачекайте.'),

@@ -8,7 +8,6 @@ import 'features/navigation/presentation/pages/main_screen.dart';
 // Додай цей рядок!
 
 import 'core/services/notification_service.dart';
-import 'services/widget_data_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

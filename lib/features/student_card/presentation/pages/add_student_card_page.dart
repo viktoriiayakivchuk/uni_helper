@@ -9,8 +9,7 @@ import 'scan_student_card_page.dart';
 class AddStudentCardPage extends StatefulWidget {
   final VoidCallback onCardAdded;
 
-  const AddStudentCardPage({Key? key, required this.onCardAdded})
-      : super(key: key);
+  const AddStudentCardPage({super.key, required this.onCardAdded});
 
   @override
   State<AddStudentCardPage> createState() => _AddStudentCardPageState();

@@ -59,7 +59,7 @@ class AuthService {
       ]);
       
       // ВИПРАВЛЕНО: authClient тепер точно не null, тому прибрали знак '?'
-      final String? accessToken = authClient.accessToken;
+      final String accessToken = authClient.accessToken;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: accessToken,

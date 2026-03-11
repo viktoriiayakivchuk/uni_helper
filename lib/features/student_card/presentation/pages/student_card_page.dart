@@ -5,7 +5,7 @@ import 'add_student_card_page.dart';
 import 'student_card_display_page.dart';
 
 class StudentCardPage extends StatefulWidget {
-  const StudentCardPage({Key? key}) : super(key: key);
+  const StudentCardPage({super.key});
 
   @override
   State<StudentCardPage> createState() => _StudentCardPageState();

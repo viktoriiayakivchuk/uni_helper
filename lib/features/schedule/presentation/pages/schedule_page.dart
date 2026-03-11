@@ -47,7 +47,7 @@ class _SchedulePageState extends State<SchedulePage> {
     _loadEvents().then((_) {
       _checkUserGroup(); 
     });
-    Future<void> _updateAndroidWidget() async {
+    Future<void> updateAndroidWidget() async {
   try {
     // Беремо саме сьогоднішню дату
     final now = DateTime.now();
