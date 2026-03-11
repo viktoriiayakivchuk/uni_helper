@@ -133,7 +133,7 @@ struct LessonRowView: View {
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.semibold)
                     .foregroundColor(.blue)
-                Text("-", spacing: 0)
+                Text("-")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundColor(.gray)
                 Text(lesson.endTime)
@@ -203,6 +203,7 @@ struct ScheduleWidget: Widget {
     }
 }
 
+@available(iOSApplicationExtension 17.0, *)
 #Preview(as: .systemMedium) {
     ScheduleWidget()
 } timeline: {

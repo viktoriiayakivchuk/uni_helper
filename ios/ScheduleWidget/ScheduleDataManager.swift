@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 
 // MARK: - Data Manager for Widget
 class ScheduleDataManager {
