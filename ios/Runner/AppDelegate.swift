@@ -4,27 +4,21 @@ import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
-  // Зберігаємо як instance property щоб ARC не знищив канал
   private var widgetChannel: FlutterMethodChannel?
 
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
-    setupWidgetChannel()
-    return result
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
   
-  private func setupWidgetChannel() {
-    guard let controller = window?.rootViewController as? FlutterViewController else {
-      print("⚠️ Widget channel: FlutterViewController not available yet")
-      return
-    }
+  private func setupWidgetChannel(messenger: FlutterBinaryMessenger) {
+    guard widgetChannel == nil else { return }
     
     widgetChannel = FlutterMethodChannel(
       name: "com.uni_helper/widget",
-      binaryMessenger: controller.binaryMessenger
+      binaryMessenger: messenger
     )
     
     widgetChannel?.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
@@ -81,9 +75,9 @@ import WidgetKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    // Якщо канал ще не зареєстровано — спробувати тут
-    if widgetChannel == nil {
-      setupWidgetChannel()
+    // Реєструємо канал через registrar messenger — engine вже точно готовий
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "WidgetChannelPlugin") {
+      setupWidgetChannel(messenger: registrar.messenger())
     }
   }
 }
