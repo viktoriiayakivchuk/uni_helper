@@ -9,7 +9,7 @@ class StudentCardService {
   // Отримуємо UID поточного користувача
   String get _userId => _auth.currentUser!.uid;
 
-  // Отримання студентського з Firestore
+  // Отримання студентського з Firestore (через Future)
   Future<StudentCard?> getStudentCard() async {
     try {
       final query = await _firestore
@@ -28,13 +28,19 @@ class StudentCardService {
     }
   }
 
-  // Створення запису (photoUrl тепер містить локальний шлях)
+  // Створення запису (photoUrl містить локальний шлях)
+  // Додано всі нові поля для ручного введення
   Future<StudentCard> createStudentCard({
     required String cardNumber,
     required String fullName,
-    required String photoUrl, // Тут буде локальний шлях
+    required String university,
+    required String faculty,
+    required String issueDate,
+    required String expiryDate,
+    required String photoUrl,
   }) async {
     try {
+      // Створюємо новий документ з автоматичним ID
       final docRef = _firestore.collection('student_cards').doc();
 
       final studentCard = StudentCard(
@@ -42,18 +48,25 @@ class StudentCardService {
         uid: _userId,
         cardNumber: cardNumber,
         fullName: fullName,
+        university: university,
+        faculty: faculty,
+        issueDate: issueDate,
+        expiryDate: expiryDate,
         photoUrl: photoUrl,
         uploadedAt: DateTime.now(),
         isVerified: false,
       );
 
+      // Записуємо дані у Firestore
       await docRef.set(studentCard.toFirestore());
       return studentCard;
     } catch (e) {
+      print('Помилка збереження в Firestore: $e');
       throw Exception('Не вдалося зберегти дані в Firestore: $e');
     }
   }
 
+  // Stream для відстеження змін студентського в реальному часі
   Stream<StudentCard?> watchStudentCard() {
     return _firestore
         .collection('student_cards')
@@ -67,7 +80,13 @@ class StudentCardService {
     });
   }
 
+  // Видалення запису з бази
   Future<void> deleteStudentCard(String cardId) async {
-    await _firestore.collection('student_cards').doc(cardId).delete();
+    try {
+      await _firestore.collection('student_cards').doc(cardId).delete();
+    } catch (e) {
+      print('Помилка видалення: $e');
+      throw Exception('Не вдалося видалити картку: $e');
+    }
   }
 }

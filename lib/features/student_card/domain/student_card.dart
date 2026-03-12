@@ -5,7 +5,11 @@ class StudentCard {
   final String uid;
   final String cardNumber;
   final String fullName;
-  final String photoUrl; // Тепер тут зберігається ЛОКАЛЬНИЙ шлях до файлу
+  final String university; // НОВЕ
+  final String faculty;    // НОВЕ
+  final String issueDate;  // НОВЕ
+  final String expiryDate; // НОВЕ
+  final String photoUrl;
   final DateTime uploadedAt;
   final bool isVerified;
 
@@ -14,20 +18,26 @@ class StudentCard {
     required this.uid,
     required this.cardNumber,
     required this.fullName,
+    required this.university,
+    required this.faculty,
+    required this.issueDate,
+    required this.expiryDate,
     required this.photoUrl,
     required this.uploadedAt,
     this.isVerified = false,
   });
 
-  // Конвертація з Firestore
   factory StudentCard.fromFirestore(Map<String, dynamic> data, String docId) {
     return StudentCard(
       id: docId,
       uid: data['uid'] ?? '',
       cardNumber: data['cardNumber'] ?? '',
       fullName: data['fullName'] ?? '',
+      university: data['university'] ?? '', // НОВЕ
+      faculty: data['faculty'] ?? '',       // НОВЕ
+      issueDate: data['issueDate'] ?? '',   // НОВЕ
+      expiryDate: data['expiryDate'] ?? '', // НОВЕ
       photoUrl: data['photoUrl'] ?? '',
-      // ВИПРАВЛЕНО: Firestore повертає Timestamp, тому конвертуємо через .toDate()
       uploadedAt: data['uploadedAt'] is Timestamp 
           ? (data['uploadedAt'] as Timestamp).toDate() 
           : DateTime.now(),
@@ -35,15 +45,17 @@ class StudentCard {
     );
   }
 
-  // Конвертація в Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'uid': uid,
       'cardNumber': cardNumber,
       'fullName': fullName,
+      'university': university, // НОВЕ
+      'faculty': faculty,       // НОВЕ
+      'issueDate': issueDate,   // НОВЕ
+      'expiryDate': expiryDate, // НОВЕ
       'photoUrl': photoUrl,
-      // Firestore автоматично перетворить DateTime на Timestamp
-      'uploadedAt': uploadedAt, 
+      'uploadedAt': uploadedAt,
       'isVerified': isVerified,
     };
   }
