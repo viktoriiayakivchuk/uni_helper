@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/lesson_item_background"
+    android:padding="8dp"
+    android:layout_marginBottom="4dp"
+    android:gravity="center_vertical">
+
+    <!-- Color bar indicating lesson type -->
+    <TextView
+        android:id="@+id/lesson_color_bar"
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/lesson_bar_default" />
+
+    <!-- Lesson info -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/lesson_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="#FF212121"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="2dp">
+
+            <TextView
+                android:id="@+id/lesson_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="#FF757575" />
+
+            <TextView
+                android:id="@+id/lesson_type_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textColor="#FF616161"
+                android:background="@drawable/type_badge_background"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:layout_marginStart="6dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

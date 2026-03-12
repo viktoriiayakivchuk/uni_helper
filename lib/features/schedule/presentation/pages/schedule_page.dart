@@ -48,32 +48,7 @@ class _SchedulePageState extends State<SchedulePage> {
     _loadEvents().then((_) {
       _checkUserGroup(); 
     });
-    Future<void> updateAndroidWidget() async {
-  try {
-    // Беремо саме сьогоднішню дату
-    final now = DateTime.now();
-    final todayKey = DateTime(now.year, now.month, now.day);
-    
-    // Отримуємо список справ (пари з сайту + ваші нотатки)
-    final lessonsToday = _events[todayKey] ?? [];
 
-    String content = "Пар на сьогодні немає";
-    if (lessonsToday.isNotEmpty) {
-      lessonsToday.sort((a, b) => a.startTime.compareTo(b.startTime));
-      content = lessonsToday
-          .map((l) => "${DateFormat('HH:mm').format(l.startTime)} - ${l.title}")
-          .join("\n");
-    }
-
-    // Відправляємо в Android
-    if (Platform.isAndroid) {
-      await HomeWidget.saveWidgetData<String>('schedule_data', content);
-      await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
-    }
-  } catch (e) {
-    debugPrint("Помилка оновлення віджета: $e");
-  }
-}
   }
 
   Future<void> _setReminderTime(Lesson lesson, int notifId, int minutes) async {
@@ -1062,23 +1037,25 @@ class _SchedulePageState extends State<SchedulePage> {
     try {
       final now = DateTime.now();
       final todayKey = DateTime(now.year, now.month, now.day);
-      
-      // Отримуємо всі події на сьогодні (і пари, і власні)
       final lessonsToday = _events[todayKey] ?? [];
 
-      String content = "Пар на сьогодні немає";
-      if (lessonsToday.isNotEmpty) {
-        // Сортуємо за часом
-        lessonsToday.sort((a, b) => a.startTime.compareTo(b.startTime));
-        
-        content = lessonsToday
-            .map((l) => "${DateFormat('HH:mm').format(l.startTime)} - ${l.title}")
-            .join("\n");
-      }
-
-      // Записуємо дані (тільки Android, iOS використовує власний MethodChannel)
       if (Platform.isAndroid) {
-        await HomeWidget.saveWidgetData<String>('schedule_data', content);
+        if (lessonsToday.isNotEmpty) {
+          lessonsToday.sort((a, b) => a.startTime.compareTo(b.startTime));
+          final lessonsJson = lessonsToday.map((l) {
+            return {
+              'title': l.title,
+              'startTime': DateFormat('HH:mm').format(l.startTime),
+              'endTime': DateFormat('HH:mm').format(l.endTime),
+              'type': l.type.toString().split('.').last,
+            };
+          }).toList();
+          await HomeWidget.saveWidgetData<String>('schedule_json', jsonEncode(lessonsJson));
+          await HomeWidget.saveWidgetData<int>('lesson_count', lessonsToday.length);
+        } else {
+          await HomeWidget.saveWidgetData<String>('schedule_json', '[]');
+          await HomeWidget.saveWidgetData<int>('lesson_count', 0);
+        }
         await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
       }
     } catch (e) {

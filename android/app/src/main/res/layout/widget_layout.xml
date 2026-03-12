@@ -3,21 +3,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@android:color/white">
+    android:padding="12dp"
+    android:background="@drawable/widget_background"
+    android:clipToOutline="true">
 
     <TextView
         android:id="@+id/widget_title"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Розклад на сьогодні"
+        android:text="📅 Розклад на сьогодні"
+        android:textSize="14sp"
         android:textStyle="bold"
-        android:textColor="@android:color/black" />
+        android:textColor="#FF212121"
+        android:paddingBottom="8dp" />
 
     <TextView
-        android:id="@+id/widget_content"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Завантаження..."
-        android:textColor="@android:color/darker_gray" />
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#15000000"
+        android:layout_marginBottom="6dp" />
+
+    <TextView
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="Пар на сьогодні немає 🎉"
+        android:textSize="13sp"
+        android:textColor="#FF757575"
+        android:gravity="center"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/widget_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@null"
+        android:dividerHeight="0dp"
+        android:scrollbars="none"
+        android:fadingEdge="none" />
+
 </LinearLayout>
