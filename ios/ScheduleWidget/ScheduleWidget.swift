@@ -62,114 +62,313 @@ struct ScheduleProvider: TimelineProvider {
 
 // MARK: - Widget View
 struct ScheduleWidgetEntryView: View {
+    @Environment(\.widgetFamily) var family
     var entry: ScheduleProvider.Entry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Заголовок з групою
+        switch family {
+        case .systemSmall:
+            SmallWidgetView(entry: entry)
+        case .systemMedium:
+            MediumWidgetView(entry: entry)
+        case .systemLarge:
+            LargeWidgetView(entry: entry)
+        default:
+            MediumWidgetView(entry: entry)
+        }
+    }
+}
+
+// MARK: - Small Widget (2x2)
+struct SmallWidgetView: View {
+    var entry: ScheduleProvider.Entry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Компактний заголовок
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Розклад")
-                        .font(.system(.caption, design: .default))
-                        .foregroundColor(.gray)
-                    Text(entry.groupName)
-                        .font(.system(.headline, design: .default))
-                        .fontWeight(.bold)
+                Text(entry.groupName)
+                    .font(.system(.subheadline, design: .default))
+                    .fontWeight(.bold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer()
+                Text("\(entry.lessons.count)")
+                    .font(.system(.title3, design: .rounded))
+                    .fontWeight(.bold)
+                    .foregroundColor(.blue)
+            }
+            
+            if entry.lessons.isEmpty {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                        Text("Вільний день")
+                            .font(.system(.caption2))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Пар: \(entry.lessons.count)")
-                        .font(.system(.caption, design: .default))
-                        .fontWeight(.semibold)
-                        .foregroundColor(.blue)
+            } else {
+                // Показуємо пари компактно — тільки час і коротка назва
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(0..<min(entry.lessons.count, 4), id: \.self) { index in
+                        SmallLessonRow(lesson: entry.lessons[index])
+                    }
+                    if entry.lessons.count > 4 {
+                        Text("+\(entry.lessons.count - 4) ще")
+                            .font(.system(size: 9))
+                            .foregroundColor(.secondary)
+                    }
                 }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(12)
+    }
+}
+
+struct SmallLessonRow: View {
+    let lesson: LessonWidget
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(lessonColor(lesson.lessonType))
+                .frame(width: 4, height: 4)
+            Text(lesson.startTime)
+                .font(.system(size: 10, design: .monospaced))
+                .fontWeight(.semibold)
+                .foregroundColor(.blue)
+            Text(lesson.title)
+                .font(.system(size: 10))
+                .lineLimit(1)
+        }
+    }
+    
+    private func lessonColor(_ type: String) -> Color {
+        switch type {
+        case "lecture": return .orange
+        case "practice": return .green
+        case "lab": return .purple
+        case "exam": return .red
+        default: return .gray
+        }
+    }
+}
+
+// MARK: - Medium Widget (4x2)
+struct MediumWidgetView: View {
+    var entry: ScheduleProvider.Entry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Заголовок
+            HStack(alignment: .center) {
+                Text(entry.groupName)
+                    .font(.system(.headline, design: .default))
+                    .fontWeight(.bold)
+                    .lineLimit(1)
+                Spacer()
+                Label("\(entry.lessons.count) пар", systemImage: "book")
+                    .font(.system(.caption, design: .default))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
             }
             
             Divider()
             
-            // Список пар
             if entry.lessons.isEmpty {
-                VStack(alignment: .center, spacing: 4) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 24))
-                        .foregroundColor(.gray)
-                    Text("Немає пар")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 8)
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(0..<min(entry.lessons.count, 3), id: \.self) { index in
-                        LessonRowView(lesson: entry.lessons[index])
-                    }
-                    
-                    if entry.lessons.count > 3 {
-                        Text("+ ще \(entry.lessons.count - 3)")
+                HStack {
+                    Spacer()
+                    VStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 24))
+                            .foregroundColor(.green)
+                        Text("Сьогодні пар немає")
                             .font(.caption)
-                            .foregroundColor(.gray)
-                            .padding(.top, 4)
+                            .foregroundColor(.secondary)
                     }
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+            } else {
+                // 2 колонки по парах для ефективного використання простору
+                let maxVisible = min(entry.lessons.count, 4)
+                let half = (maxVisible + 1) / 2
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(0..<half, id: \.self) { i in
+                            MediumLessonRow(lesson: entry.lessons[i])
+                        }
+                    }
+                    if maxVisible > half {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(half..<maxVisible, id: \.self) { i in
+                                MediumLessonRow(lesson: entry.lessons[i])
+                            }
+                        }
+                    }
+                }
+                if entry.lessons.count > 4 {
+                    Text("+ ще \(entry.lessons.count - 4)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
                 }
             }
             
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding()
+        .padding(12)
     }
 }
 
-// MARK: - Row View for Lessons
-struct LessonRowView: View {
+struct MediumLessonRow: View {
     let lesson: LessonWidget
-
+    
     var body: some View {
-        HStack(spacing: 8) {
-            // Час
-            VStack(alignment: .center, spacing: 0) {
-                Text(lesson.startTime)
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.semibold)
-                    .foregroundColor(.blue)
-                Text("-")
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundColor(.gray)
-                Text(lesson.endTime)
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.semibold)
-                    .foregroundColor(.blue)
-            }
-            .frame(width: 50)
-
-            // Назва пари
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 6) {
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(lessonColor(lesson.lessonType))
+                .frame(width: 3, height: 28)
+            
+            VStack(alignment: .leading, spacing: 1) {
                 Text(lesson.title)
-                    .font(.system(.caption, design: .default))
+                    .font(.system(size: 11))
                     .fontWeight(.medium)
                     .lineLimit(1)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: lessonTypeIcon(lesson.lessonType))
-                        .font(.system(size: 10))
-                    Text(lessonTypeLabel(lesson.lessonType))
-                        .font(.system(.caption2, design: .default))
+                Text("\(lesson.startTime)–\(lesson.endTime)")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+    
+    private func lessonColor(_ type: String) -> Color {
+        switch type {
+        case "lecture": return .orange
+        case "practice": return .green
+        case "lab": return .purple
+        case "exam": return .red
+        default: return .gray
+        }
+    }
+}
+
+// MARK: - Large Widget (4x4)
+struct LargeWidgetView: View {
+    var entry: ScheduleProvider.Entry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Заголовок
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Розклад на сьогодні")
+                        .font(.system(.caption, design: .default))
+                        .foregroundColor(.secondary)
+                    Text(entry.groupName)
+                        .font(.system(.title3, design: .default))
+                        .fontWeight(.bold)
                 }
-                .foregroundColor(.gray)
+                Spacer()
+                Text("\(entry.lessons.count)")
+                    .font(.system(.title, design: .rounded))
+                    .fontWeight(.bold)
+                    .foregroundColor(.blue)
+                Text("пар")
+                    .font(.system(.caption))
+                    .foregroundColor(.secondary)
+            }
+            
+            Divider()
+            
+            if entry.lessons.isEmpty {
+                Spacer()
+                HStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle")
+                            .font(.system(size: 36))
+                            .foregroundColor(.green)
+                        Text("Сьогодні пар немає")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+                Spacer()
+            } else {
+                // Всі пари з повною інформацією
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(0..<min(entry.lessons.count, 8), id: \.self) { index in
+                        LargeLessonRow(lesson: entry.lessons[index])
+                        if index < min(entry.lessons.count, 8) - 1 {
+                            Divider().opacity(0.3)
+                        }
+                    }
+                    if entry.lessons.count > 8 {
+                        Text("+ ще \(entry.lessons.count - 8)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(14)
+    }
+}
+
+struct LargeLessonRow: View {
+    let lesson: LessonWidget
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            // Кольорова смужка
+            RoundedRectangle(cornerRadius: 2)
+                .fill(lessonColor(lesson.lessonType))
+                .frame(width: 4, height: 32)
+            
+            // Час
+            VStack(spacing: 0) {
+                Text(lesson.startTime)
+                    .font(.system(size: 12, design: .monospaced))
+                    .fontWeight(.semibold)
+                    .foregroundColor(.blue)
+                Text(lesson.endTime)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.secondary)
+            }
+            .frame(width: 40)
+            
+            // Назва і тип
+            VStack(alignment: .leading, spacing: 2) {
+                Text(lesson.title)
+                    .font(.system(.subheadline))
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+                Text(lessonTypeLabel(lesson.lessonType))
+                    .font(.system(.caption2))
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
         }
-        .padding(.vertical, 4)
     }
     
-    private func lessonTypeIcon(_ type: String) -> String {
+    private func lessonColor(_ type: String) -> Color {
         switch type {
-        case "lecture": return "book.fill"
-        case "practice": return "pencil.circle.fill"
-        case "lab": return "flask.fill"
-        case "exam": return "checkmark.circle.fill"
-        default: return "circle.fill"
+        case "lecture": return .orange
+        case "practice": return .green
+        case "lab": return .purple
+        case "exam": return .red
+        default: return .gray
         }
     }
     
@@ -199,7 +398,7 @@ struct ScheduleWidget: Widget {
         }
         .configurationDisplayName("Розклад пар")
         .description("Показує розклад на сьогодні")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
