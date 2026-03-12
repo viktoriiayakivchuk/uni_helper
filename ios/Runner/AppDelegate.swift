@@ -4,48 +4,54 @@ import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  // Зберігаємо як instance property щоб ARC не знищив канал
+  private var widgetChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    // Спочатку ініціалізуємо Flutter engine
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
-    
-    // Тепер Flutter engine готовий і rootViewController доступний
-    if let controller = window?.rootViewController as? FlutterViewController {
-      let widgetChannel = FlutterMethodChannel(
-        name: "com.uni_helper/widget",
-        binaryMessenger: controller.binaryMessenger
-      )
-      
-      widgetChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
-        switch call.method {
-        case "updateWidget":
-          if let args = call.arguments as? [String: Any],
-             let lessons = args["lessons"] as? [[String: Any]],
-             let groupName = args["groupName"] as? String {
-            self.updateWidgetData(lessons: lessons, groupName: groupName)
-            result(true)
-          } else {
-            result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments", details: nil))
-          }
-          
-        case "clearWidget":
-          self.clearWidgetData()
-          result(true)
-          
-        default:
-          result(FlutterMethodNotImplemented)
-        }
-      }
+    setupWidgetChannel()
+    return result
+  }
+  
+  private func setupWidgetChannel() {
+    guard let controller = window?.rootViewController as? FlutterViewController else {
+      print("⚠️ Widget channel: FlutterViewController not available yet")
+      return
     }
     
-    return result
+    widgetChannel = FlutterMethodChannel(
+      name: "com.uni_helper/widget",
+      binaryMessenger: controller.binaryMessenger
+    )
+    
+    widgetChannel?.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      switch call.method {
+      case "updateWidget":
+        if let args = call.arguments as? [String: Any],
+           let lessons = args["lessons"] as? [[String: Any]],
+           let groupName = args["groupName"] as? String {
+          self?.updateWidgetData(lessons: lessons, groupName: groupName)
+          result(true)
+        } else {
+          result(FlutterError(code: "INVALID_ARGS", message: "Invalid arguments", details: nil))
+        }
+        
+      case "clearWidget":
+        self?.clearWidgetData()
+        result(true)
+        
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    print("✅ Widget channel registered successfully")
   }
   
   private func updateWidgetData(lessons: [[String: Any]], groupName: String) {
     if let userDefaults = UserDefaults(suiteName: "group.com.uni-helper.app") {
-      // Конвертуємо в [[String: String]] та зберігаємо як JSON Data
       let stringLessons = lessons.map { dict -> [String: String] in
         var result: [String: String] = [:]
         for (key, value) in dict {
@@ -60,6 +66,7 @@ import WidgetKit
       userDefaults.synchronize()
       
       WidgetKit.WidgetCenter.shared.reloadAllTimelines()
+      print("✅ Widget data updated: \(stringLessons.count) lessons, group: \(groupName)")
     }
   }
   
@@ -68,14 +75,15 @@ import WidgetKit
       userDefaults.removeObject(forKey: "todayLessons")
       userDefaults.removeObject(forKey: "currentGroupName")
       userDefaults.synchronize()
-      
-      if #available(iOS 14.0, *) {
-        WidgetKit.WidgetCenter.shared.reloadAllTimelines()
-      }
+      WidgetKit.WidgetCenter.shared.reloadAllTimelines()
     }
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Якщо канал ще не зареєстровано — спробувати тут
+    if widgetChannel == nil {
+      setupWidgetChannel()
+    }
   }
 }
