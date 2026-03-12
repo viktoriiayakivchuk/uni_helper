@@ -1,0 +1,31 @@
+{
+  "" : {
+    "const-values" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.swiftconstvalues",
+    "dependencies" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.d",
+    "diagnostics" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.dia",
+    "emit-module-dependencies" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary-emit-module.dia",
+    "pch" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.swiftdeps"
+  },
+  "/Users/danyasuskov/Development/uni_helper/ios/ScheduleWidget/AppIntent.swift" : {
+    "index-unit-output-path" : "/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/AppIntent.o",
+    "llvm-bc" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/AppIntent.bc",
+    "object" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/AppIntent.o"
+  },
+  "/Users/danyasuskov/Development/uni_helper/ios/ScheduleWidget/ScheduleDataManager.swift" : {
+    "index-unit-output-path" : "/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleDataManager.o",
+    "llvm-bc" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleDataManager.bc",
+    "object" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleDataManager.o"
+  },
+  "/Users/danyasuskov/Development/uni_helper/ios/ScheduleWidget/ScheduleWidget.swift" : {
+    "index-unit-output-path" : "/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidget.o",
+    "llvm-bc" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidget.bc",
+    "object" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidget.o"
+  },
+  "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  }
+}

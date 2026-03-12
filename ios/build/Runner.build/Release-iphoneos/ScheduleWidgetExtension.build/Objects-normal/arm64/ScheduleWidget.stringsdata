@@ -1,0 +1,72 @@
+{
+  "source": "/Users/danyasuskov/Development/uni_helper/ios/ScheduleWidget/ScheduleWidget.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Розклад",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 72
+        }
+      },
+      {
+        "comment": "",
+        "key": "Пар: %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 81
+        }
+      },
+      {
+        "comment": "",
+        "key": "Немає пар",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "+ ще %lld",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 109
+        }
+      },
+      {
+        "comment": "",
+        "key": "-",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "Розклад пар",
+        "location": {
+          "startingColumn": 35,
+          "startingLine": 200
+        }
+      },
+      {
+        "comment": "",
+        "key": "Показує розклад на сьогодні",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 201
+        }
+      },
+      {
+        "comment": "",
+        "key": "Favorite Emoji",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 220
+        }
+      }
+    ]
+  },
+  "version": 1
+}

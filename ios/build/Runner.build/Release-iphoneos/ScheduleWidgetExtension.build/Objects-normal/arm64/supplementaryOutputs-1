@@ -1,0 +1,12 @@
+{
+  "/Users/danyasuskov/Development/uni_helper/ios/ScheduleWidget/ScheduleWidget.swift" : {
+    "abi-baseline-json" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension.abi.json",
+    "const-values" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.swiftconstvalues",
+    "dependencies" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.d",
+    "diagnostics" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-primary.dia",
+    "objc-header" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension-Swift.h",
+    "swiftdoc" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension.swiftdoc",
+    "swiftmodule" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension.swiftmodule",
+    "swiftsourceinfo" : "/Users/danyasuskov/Development/uni_helper/ios/build/Runner.build/Release-iphoneos/ScheduleWidgetExtension.build/Objects-normal/arm64/ScheduleWidgetExtension.swiftsourceinfo"
+  }
+}

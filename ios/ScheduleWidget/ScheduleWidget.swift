@@ -117,7 +117,6 @@ struct ScheduleWidgetEntryView: View {
             Spacer()
         }
         .padding()
-        .background(Color(.systemBackground))
     }
 }
 
@@ -196,6 +195,7 @@ struct ScheduleWidget: Widget {
             provider: ScheduleProvider()
         ) { entry in
             ScheduleWidgetEntryView(entry: entry)
+                .containerBackground(.fill.tertiary, for: .widget)
         }
         .configurationDisplayName("Розклад пар")
         .description("Показує розклад на сьогодні")
