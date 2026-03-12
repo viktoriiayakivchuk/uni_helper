@@ -16,6 +16,7 @@ import '../../../../services/widget_data_service.dart';
 
 import 'package:flutter/services.dart';
 import 'package:home_widget/home_widget.dart';
+import 'dart:io' show Platform;
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -65,8 +66,10 @@ class _SchedulePageState extends State<SchedulePage> {
     }
 
     // Відправляємо в Android
-    await HomeWidget.saveWidgetData<String>('schedule_data', content);
-    await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+    if (Platform.isAndroid) {
+      await HomeWidget.saveWidgetData<String>('schedule_data', content);
+      await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+    }
   } catch (e) {
     debugPrint("Помилка оновлення віджета: $e");
   }
@@ -1073,10 +1076,11 @@ class _SchedulePageState extends State<SchedulePage> {
             .join("\n");
       }
 
-      // Записуємо дані
-      await HomeWidget.saveWidgetData<String>('schedule_data', content);
-      // Оновлюємо віджет
-      await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+      // Записуємо дані (тільки Android, iOS використовує власний MethodChannel)
+      if (Platform.isAndroid) {
+        await HomeWidget.saveWidgetData<String>('schedule_data', content);
+        await HomeWidget.updateWidget(androidName: 'ScheduleWidgetProvider');
+      }
     } catch (e) {
       debugPrint("Помилка оновлення віджета: $e");
     }
