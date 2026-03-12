@@ -26,20 +26,26 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     _loadCurrentUserData();
   }
 
-  // Завантажуємо існуючі дані профілю для редагування [cite: 140]
   Future<void> _loadCurrentUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-      if (doc.exists && doc.data() != null) {
-        final data = doc.data()!;
-        setState(() {
-          selectedFaculty = data['faculty'];
-          selectedCourse = data['course']?.toString();
-          selectedGroup = data['group'];
-          isInitialDataLoaded = true;
-        });
-      } else {
+      try {
+        // ВИПРАВЛЕНО: Додано '!' після user, щоб уникнути помилки getter 'uid'
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+        
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          setState(() {
+            selectedFaculty = data['faculty'];
+            selectedCourse = data['course']?.toString();
+            selectedGroup = data['group'];
+            isInitialDataLoaded = true;
+          });
+        } else {
+          setState(() => isInitialDataLoaded = true);
+        }
+      } catch (e) {
+        debugPrint("Помилка завантаження: $e");
         setState(() => isInitialDataLoaded = true);
       }
     }
@@ -47,45 +53,58 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
 
   Future<void> _saveProfile() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null && selectedFaculty != null && selectedGroup != null) {
+
+    // ПЕРЕВІРКА: чи всі поля обрані та чи є користувач
+    if (user != null && selectedFaculty != null && selectedGroup != null && selectedCourse != null) {
       setState(() => isSaving = true);
       try {
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        // ВИПРАВЛЕНО: Використовуємо 'user!.uid' для доступу до документа
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).set({
+          'uid': user!.uid,
+          'email': user.email,
+          'fullName': user.displayName ?? "Студент ПНУ",
+          'photoUrl': user.photoURL, // Зберігаємо посилання на фото з Google
           'faculty': selectedFaculty,
           'course': selectedCourse,
           'group': selectedGroup,
           'isProfileComplete': true,
+          'lastUpdated': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
         if (mounted) {
-          // Показуємо успішне сповіщення 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Дані успішно оновлено!'),
+              content: Text('Профіль успішно оновлено!'),
               backgroundColor: Color(0xFF2D5A40),
               behavior: SnackBarBehavior.floating,
             ),
           );
           
           widget.onSaved();
-          Navigator.of(context).pop(); // Повертаємось назад після успіху
+          Navigator.of(context).pop(); 
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Помилка: $e'), backgroundColor: Colors.redAccent),
+            SnackBar(content: Text('Помилка збереження: $e'), backgroundColor: Colors.redAccent),
           );
         }
       } finally {
         if (mounted) setState(() => isSaving = false);
       }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Будь ласка, заповніть всі поля!')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (!isInitialDataLoaded) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF2D5A40))));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF2D5A40)))
+      );
     }
 
     return Scaffold(
@@ -133,12 +152,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
                             "Мій профіль",
                             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF2D5A40)),
                           ),
-                          const SizedBox(height: 8),
-                          const Text("Вкажіть дані для розкладу", style: TextStyle(color: Colors.black54)),
                           const SizedBox(height: 32),
-                          _buildGlassDropdown("Факультет", _facultyItems()),
+                          _buildGlassDropdown("Факультет", _buildFacultyItems()),
                           const SizedBox(height: 20),
-                          _buildGlassDropdown("Курс", _courseItems()),
+                          _buildGlassDropdown("Курс", _buildCourseItems()),
                           const SizedBox(height: 20),
                           _buildGroupSection(),
                           const SizedBox(height: 40),
@@ -169,7 +186,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     );
   }
 
-  Widget _facultyItems() {
+  Widget _buildFacultyItems() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('university_structure').snapshots(),
       builder: (context, snapshot) {
@@ -185,7 +202,7 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
     );
   }
 
-  Widget _courseItems() {
+  Widget _buildCourseItems() {
     return _styledDropdown(
       value: selectedCourse,
       hint: "Оберіть курс",
@@ -207,8 +224,10 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
         FutureBuilder<DocumentSnapshot>(
           future: FirebaseFirestore.instance.collection('university_structure').doc(selectedFaculty).get(),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) return const LinearProgressIndicator();
+            if (!snapshot.hasData) return const LinearProgressIndicator(color: Color(0xFF2D5A40));
             
+            if (!snapshot.data!.exists) return const Text("Дані відсутні");
+
             List<dynamic> allGroups = snapshot.data!['groups'] ?? [];
             String courseDigit = selectedCourse!.split(' ')[0];
             List<String> filteredGroups = allGroups
@@ -252,24 +271,20 @@ class _CompleteProfilePageState extends State<CompleteProfilePage> {
   }
 
   Widget _buildSaveButton() {
+    bool canSave = selectedGroup != null && !isSaving;
+
     return isSaving 
       ? const CircularProgressIndicator(color: Color(0xFF2D5A40))
-      : GestureDetector(
-          onTap: (selectedGroup != null) ? _saveProfile : null,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: (selectedGroup != null) ? const Color(0xFF2D5A40) : Colors.grey,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Center(
-              child: Text(
-                "ЗБЕРЕГТИ ЗМІНИ",
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-              ),
-            ),
+      : ElevatedButton(
+          onPressed: canSave ? _saveProfile : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D5A40),
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: Colors.grey,
+            minimumSize: const Size(double.infinity, 55),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           ),
+          child: const Text("ЗБЕРЕГТИ ЗМІНИ", style: TextStyle(fontWeight: FontWeight.bold)),
         );
   }
 }

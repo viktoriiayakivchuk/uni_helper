@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io'; // Додано для роботи з файлами
 import '../../../student_card/domain/student_card.dart';
 import '../../../student_card/data/student_card_service.dart';
 
@@ -163,7 +164,7 @@ class _StudentCardDisplayPageState extends State<StudentCardDisplayPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Карточка студентського в кольоровому форматі
+            // Карточка студентського
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -177,19 +178,20 @@ class _StudentCardDisplayPageState extends State<StudentCardDisplayPage> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  widget.studentCard.photoUrl,
+                child: Image.file( // ЗМІНЕНО: тепер використовуємо локальний файл
+                  File(widget.studentCard.photoUrl),
                   fit: BoxFit.cover,
                   width: double.infinity,
+                  height: 250, // Додано фіксовану висоту для гарного вигляду
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      height: 400,
+                      height: 250,
                       color: Colors.grey[300],
                       child: const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.image_not_supported, size: 64),
+                            Icon(Icons.image_not_supported, size: 64, color: Colors.grey),
                             SizedBox(height: 12),
                             Text('Помилка завантаження фото'),
                           ],

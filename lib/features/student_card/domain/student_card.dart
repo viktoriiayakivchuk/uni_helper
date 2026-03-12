@@ -1,15 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class StudentCard {
   final String id;
-  final String userId;
+  final String uid;
   final String cardNumber;
   final String fullName;
-  final String photoUrl; // URL фото студентського у Firebase Storage
+  final String photoUrl; // Тепер тут зберігається ЛОКАЛЬНИЙ шлях до файлу
   final DateTime uploadedAt;
-  final bool isVerified; // Чи був відпрацьований адміністратором
+  final bool isVerified;
 
   StudentCard({
     required this.id,
-    required this.userId,
+    required this.uid,
     required this.cardNumber,
     required this.fullName,
     required this.photoUrl,
@@ -21,11 +23,14 @@ class StudentCard {
   factory StudentCard.fromFirestore(Map<String, dynamic> data, String docId) {
     return StudentCard(
       id: docId,
-      userId: data['userId'] ?? '',
+      uid: data['uid'] ?? '',
       cardNumber: data['cardNumber'] ?? '',
       fullName: data['fullName'] ?? '',
       photoUrl: data['photoUrl'] ?? '',
-      uploadedAt: (data['uploadedAt'] as DateTime?) ?? DateTime.now(),
+      // ВИПРАВЛЕНО: Firestore повертає Timestamp, тому конвертуємо через .toDate()
+      uploadedAt: data['uploadedAt'] is Timestamp 
+          ? (data['uploadedAt'] as Timestamp).toDate() 
+          : DateTime.now(),
       isVerified: data['isVerified'] ?? false,
     );
   }
@@ -33,11 +38,12 @@ class StudentCard {
   // Конвертація в Firestore
   Map<String, dynamic> toFirestore() {
     return {
-      'userId': userId,
+      'uid': uid,
       'cardNumber': cardNumber,
       'fullName': fullName,
       'photoUrl': photoUrl,
-      'uploadedAt': uploadedAt,
+      // Firestore автоматично перетворить DateTime на Timestamp
+      'uploadedAt': uploadedAt, 
       'isVerified': isVerified,
     };
   }
