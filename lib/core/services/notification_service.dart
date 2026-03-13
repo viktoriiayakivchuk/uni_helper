@@ -17,7 +17,7 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('Europe/Kyiv'));
 
     // Налаштування для Android (іконка сповіщення)
-    const AndroidInitializationSettings initSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initSettingsAndroid = AndroidInitializationSettings('@mipmap/launcher_icon');
     
     // Налаштування для iOS
     const DarwinInitializationSettings initSettingsIOS = DarwinInitializationSettings(
